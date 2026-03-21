@@ -48,6 +48,13 @@ const PRODUCTS: Record<string, Product> = {
         stock: 24,
         sku: "DRK-001",
     },
+    "842251152516": {
+        barcode: "842251152516",
+        name: "Good Luck Book",
+        price: 120,
+        stock: 12,
+        sku: "SOAP-005",
+    },
     "1234567890128": {
         barcode: "1234567890128",
         name: "Lux Soap",
