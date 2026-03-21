@@ -1,36 +1,25 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Development
 
-## Getting Started
-
-First, run the development server:
+Desktop browser on the same machine:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Phone or another device on your LAN:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run dev:phone
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Why this matters:
 
-## Learn More
+- `http://localhost:3000` is treated as a secure context on your computer, so camera access works.
+- `http://192.168.x.x:3000` on a phone is not a secure context, so mobile browsers block `getUserMedia()`.
+- `npm run dev:phone` starts Next.js with HTTPS and a LAN host so the barcode camera page has a usable mobile testing path.
 
-To learn more about Next.js, take a look at the following resources:
+Notes for phone testing:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Open the printed `https://...` address on the phone, not the old `http://...` address.
+- Next.js uses `mkcert` here and creates local certificates for the dev machine.
+- If the phone still does not trust the certificate, install the mkcert root CA on that device or use an HTTPS tunnel.
