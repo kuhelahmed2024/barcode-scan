@@ -124,8 +124,7 @@ export default function BarcodeDemoPage() {
     }
 
     async function startScanner() {
-        try {
-            alert("hellow")
+        try { 
             setError("");
             setProduct(null);
             setScanText("");
