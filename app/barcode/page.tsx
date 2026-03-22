@@ -596,10 +596,6 @@ export default function BarcodeDemoPage() {
                         <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
                             Fast product scan experience
                         </h1>
-                        <p className="mt-2 max-w-2xl text-sm text-slate-400 sm:text-base">
-                            Start the camera once, scan continuously, review the latest item instantly,
-                            and manage quantities without losing focus.
-                        </p>
                     </div>
 
                     <button
@@ -638,229 +634,110 @@ export default function BarcodeDemoPage() {
                     </div>
                 ) : null}
 
-                <div className="grid gap-6 lg:grid-cols-[1.25fr_0.85fr]">
-                    <section className="overflow-hidden rounded-[28px] border border-slate-800 bg-slate-900/70 shadow-2xl shadow-black/20">
-                        <div className="relative">
-                            <video
-                                ref={videoRef}
-                                className="aspect-16/10 w-full bg-black object-cover"
-                                autoPlay
-                                muted
-                                playsInline
-                            />
+                <section className="overflow-hidden rounded-[28px] border border-slate-800 bg-slate-900/70 shadow-2xl shadow-black/20">
+                    <div className="relative">
+                        <video
+                            ref={videoRef}
+                            className="aspect-16/10 w-full bg-black object-cover"
+                            autoPlay
+                            muted
+                            playsInline
+                        />
 
-                            <div className="pointer-events-none absolute inset-0">
-                                <div className="absolute left-4 top-4 flex flex-wrap gap-2">
-                                    <span
-                                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${isScanning
-                                            ? "bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/30"
-                                            : "bg-slate-800/90 text-slate-300 ring-1 ring-slate-700"
-                                            }`}
-                                    >
-                                        {statusText}
-                                    </span>
+                        <div className="pointer-events-none absolute inset-0">
+                            <div className="absolute left-4 top-4 flex flex-wrap gap-2">
+                                <span
+                                    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${isScanning
+                                        ? "bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/30"
+                                        : "bg-slate-800/90 text-slate-300 ring-1 ring-slate-700"
+                                        }`}
+                                >
+                                    {statusText}
+                                </span>
 
-                                    <span className="inline-flex items-center rounded-full bg-slate-800/90 px-3 py-1 text-xs font-medium text-slate-300 ring-1 ring-slate-700">
-                                        {cameraLabel || "No camera selected"}
-                                    </span>
+                                <span className="inline-flex items-center rounded-full bg-slate-800/90 px-3 py-1 text-xs font-medium text-slate-300 ring-1 ring-slate-700">
+                                    {cameraLabel || "No camera selected"}
+                                </span>
 
-                                    <span
-                                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ring-1 ${isSecureOrigin === false
-                                            ? "bg-red-500/15 text-red-300 ring-red-400/30"
-                                            : "bg-sky-500/15 text-sky-300 ring-sky-400/30"
-                                            }`}
-                                    >
-                                        {isSecureOrigin === false ? "Insecure origin" : "Secure origin"}
-                                    </span>
-                                </div>
+                                <span
+                                    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ring-1 ${isSecureOrigin === false
+                                        ? "bg-red-500/15 text-red-300 ring-red-400/30"
+                                        : "bg-sky-500/15 text-sky-300 ring-sky-400/30"
+                                        }`}
+                                >
+                                    {isSecureOrigin === false ? "Insecure origin" : "Secure origin"}
+                                </span>
+                            </div>
 
-                                <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 px-5 sm:px-8">
+                            <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 px-5 sm:px-8">
+                                <div
+                                    className={`relative mx-auto h-28 max-w-2xl rounded-[28px] border-2 transition-all duration-300 ${isSuccessFlashActive
+                                        ? "border-emerald-400 bg-emerald-400/10 shadow-[0_0_0_9999px_rgba(16,185,129,0.12)]"
+                                        : "border-white/85 bg-black/10 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]"
+                                        }`}
+                                >
                                     <div
-                                        className={`relative mx-auto h-28 max-w-2xl rounded-[28px] border-2 transition-all duration-300 ${isSuccessFlashActive
-                                            ? "border-emerald-400 bg-emerald-400/10 shadow-[0_0_0_9999px_rgba(16,185,129,0.12)]"
-                                            : "border-white/85 bg-black/10 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]"
+                                        className={`absolute inset-x-6 top-1/2 h-px -translate-y-1/2 ${isScanning ? "bg-emerald-400/80 animate-pulse" : "bg-white/50"
                                             }`}
-                                    >
-                                        <div
-                                            className={`absolute inset-x-6 top-1/2 h-px -translate-y-1/2 ${isScanning ? "bg-emerald-400/80 animate-pulse" : "bg-white/50"
-                                                }`}
-                                        />
-                                    </div>
-
-                                    <p className="mt-3 text-center text-xs font-semibold uppercase tracking-[0.32em] text-white/90 sm:text-sm">
-                                        Center barcode inside the frame
-                                    </p>
+                                    />
                                 </div>
 
-                                <div className="absolute bottom-4 left-4 right-4 rounded-3xl border border-white/10 bg-black/45 p-4 backdrop-blur-md">
-                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                                        <div>
-                                            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">
-                                                Live feedback
-                                            </p>
-                                            <p className="mt-1 text-sm text-white">
-                                                {latestScan
-                                                    ? `Last detected: ${latestScan.product?.name ?? latestScan.barcode}`
-                                                    : "Waiting for your first scan"}
-                                            </p>
-                                        </div>
-
-                                        <div className="flex flex-wrap gap-2">
-                                            <span className="inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white">
-                                                {totalScannedItems} total scans
-                                            </span>
-                                            <span className="inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white">
-                                                {scannedItems.length} unique items
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {error ? (
-                            <div className="border-t border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                                {error}
-                            </div>
-                        ) : null}
-
-                        <div className="border-t border-slate-800 p-4 sm:p-5">
-                            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                                <button
-                                    type="button"
-                                    onClick={startScanner}
-                                    disabled={isStarting || isScanning || isSecureOrigin === false}
-                                    className={`${baseButton} bg-emerald-500 text-slate-950 hover:bg-emerald-400`}
-                                >
-                                    {isStarting ? "Starting..." : isScanning ? "Camera active" : "Start camera"}
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={stopScanner}
-                                    disabled={!isScanning}
-                                    className={`${baseButton} border border-rose-500/30 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20`}
-                                >
-                                    Stop scanner
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={toggleTorch}
-                                    disabled={!isScanning || !isTorchAvailable}
-                                    className={`${baseButton} border border-slate-700 bg-slate-800 text-slate-100 hover:border-slate-500 hover:bg-slate-700`}
-                                >
-                                    {!isTorchAvailable
-                                        ? "Torch unavailable"
-                                        : isTorchOn
-                                            ? "Turn torch off"
-                                            : "Turn torch on"}
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={resetAll}
-                                    className={`${baseButton} border border-slate-700 bg-slate-900 text-slate-100 hover:border-slate-500 hover:bg-slate-800`}
-                                >
-                                    Reset all
-                                </button>
-                            </div>
-                        </div>
-                    </section>
-
-                    <aside className="space-y-4">
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-                            <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-4">
-                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                                    Total scans
-                                </p>
-                                <p className="mt-2 text-3xl font-bold text-white">{totalScannedItems}</p>
-                                <p className="mt-1 text-sm text-slate-400">
-                                    All successful barcode reads combined
-                                </p>
-                            </div>
-
-                            <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-4">
-                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                                    Unique items
-                                </p>
-                                <p className="mt-2 text-3xl font-bold text-white">{scannedItems.length}</p>
-                                <p className="mt-1 text-sm text-slate-400">
-                                    Different barcodes currently in cart
-                                </p>
-                            </div>
-
-                            <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-4">
-                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                                    Estimated subtotal
-                                </p>
-                                <p className="mt-2 text-3xl font-bold text-white">
-                                    {formatTaka(subtotalAmount)}
-                                </p>
-                                <p className="mt-1 text-sm text-slate-400">
-                                    Based on known product prices only
-                                </p>
-                            </div>
-
-                            <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-4">
-                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                                    Needs mapping
-                                </p>
-                                <p className="mt-2 text-3xl font-bold text-white">{unknownItemsCount}</p>
-                                <p className="mt-1 text-sm text-slate-400">
-                                    Scanned codes without a matched product
+                                <p className="mt-3 text-center text-xs font-semibold uppercase tracking-[0.32em] text-white/90 sm:text-sm">
+                                    Center barcode inside the frame
                                 </p>
                             </div>
                         </div>
+                    </div>
 
-                        <div
-                            aria-live="polite"
-                            className="rounded-3xl border border-slate-800 bg-linear-to-br from-emerald-500/12 to-sky-500/10 p-5"
-                        >
-                            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">
-                                Latest scan
-                            </p>
-
-                            {latestScan ? (
-                                <div className="mt-3">
-                                    <div className="text-xl font-bold text-white">
-                                        {latestScan.product?.name ?? "Unknown product"}
-                                    </div>
-                                    <div className="mt-1 break-all font-mono text-xs text-slate-300">
-                                        {latestScan.barcode}
-                                    </div>
-
-                                    <div className="mt-4 flex flex-wrap gap-2">
-                                        <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-slate-100">
-                                            Qty {latestScan.quantity}
-                                        </span>
-                                        <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-slate-100">
-                                            {latestScan.format}
-                                        </span>
-                                        {latestScan.product ? (
-                                            <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-slate-100">
-                                                {formatTaka(latestScan.product.price)}
-                                            </span>
-                                        ) : (
-                                            <span className="rounded-full bg-amber-400/20 px-3 py-1 text-xs font-medium text-amber-200">
-                                                Product not found
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    <p className="mt-4 text-sm text-slate-300">
-                                        Last scanned at {latestScan.scannedAt}
-                                    </p>
-                                </div>
-                            ) : (
-                                <p className="mt-3 text-sm text-slate-300">
-                                    Nothing scanned yet. Start the camera and point it at a barcode to
-                                    see instant feedback here.
-                                </p>
-                            )}
+                    {error ? (
+                        <div className="border-t border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                            {error}
                         </div>
-                    </aside>
-                </div>
+                    ) : null}
+
+                    <div className="border-t border-slate-800 p-4 sm:p-5">
+                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                            <button
+                                type="button"
+                                onClick={startScanner}
+                                disabled={isStarting || isScanning || isSecureOrigin === false}
+                                className={`${baseButton} bg-emerald-500 text-slate-950 hover:bg-emerald-400`}
+                            >
+                                {isStarting ? "Starting..." : isScanning ? "Camera active" : "Start camera"}
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={stopScanner}
+                                disabled={!isScanning}
+                                className={`${baseButton} border border-rose-500/30 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20`}
+                            >
+                                Stop scanner
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={toggleTorch}
+                                disabled={!isScanning || !isTorchAvailable}
+                                className={`${baseButton} border border-slate-700 bg-slate-800 text-slate-100 hover:border-slate-500 hover:bg-slate-700`}
+                            >
+                                {!isTorchAvailable
+                                    ? "Torch unavailable"
+                                    : isTorchOn
+                                        ? "Turn torch off"
+                                        : "Turn torch on"}
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={resetAll}
+                                className={`${baseButton} border border-slate-700 bg-slate-900 text-slate-100 hover:border-slate-500 hover:bg-slate-800`}
+                            >
+                                Reset all
+                            </button>
+                        </div>
+                    </div>
+                </section>
 
                 <section className="mt-6 overflow-hidden rounded-[28px] border border-slate-800 bg-slate-900/70 shadow-xl shadow-black/10">
                     <div className="border-b border-slate-800 px-4 py-4 sm:px-6">
