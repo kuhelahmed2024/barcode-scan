@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { BrowserMultiFormatOneDReader, type IScannerControls } from "@zxing/browser";
 import { BarcodeFormat, DecodeHintType, type Result } from "@zxing/library";
+import { Flashlight, FlashlightOff } from "lucide-react";
 
 type Product = {
     barcode: string;
@@ -621,11 +622,22 @@ export default function BarcodeDemoPage() {
                                 >
                                     {statusText}
                                 </span>
-
-                                <div className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-emerald-300">
-                                    Smart Barcode Scanner
-                                </div>
                             </div>
+
+                            {
+                                isTorchAvailable && (
+                                    <div className="absolute right-4 bottom-4 flex flex-wrap gap-2">
+                                        <span
+                                            className={` inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-slate-800/90 text-slate-300 ring-1 ring-slate-700`}
+                                        >
+                                            {isTorchOn
+                                                ? <Flashlight />
+                                                : <FlashlightOff />
+                                            }
+                                        </span>
+                                    </div>
+                                )
+                            }
 
                             <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 px-5 sm:px-8">
                                 <div
@@ -640,7 +652,7 @@ export default function BarcodeDemoPage() {
                                     />
                                 </div>
 
-                                <p className="mt-3 text-center text-xs font-semibold uppercase tracking-[0.32em] text-white/90 sm:text-sm">
+                                <p className="mt-3 text-center text-xs font-semibold uppercase text-white/90 sm:text-sm">
                                     Center barcode inside the frame
                                 </p>
                             </div>
@@ -671,10 +683,10 @@ export default function BarcodeDemoPage() {
                                 className={`${baseButton} w-full border border-slate-700 bg-slate-800 text-slate-100 hover:border-slate-500 hover:bg-slate-700`}
                             >
                                 {!isTorchAvailable
-                                    ? "Torch unavailable"
+                                    ? "Torch"
                                     : isTorchOn
-                                        ? "Turn torch off"
-                                        : "Turn torch on"}
+                                        ? "Torch off"
+                                        : "Torch on"}
                             </button>
 
                             <button
@@ -689,7 +701,7 @@ export default function BarcodeDemoPage() {
                                 disabled={isStarting || isScanning || isSecureOrigin === false}
                                 className={`${baseButton} ${(!isStarting && isScanning) ? "border border-rose-500/30 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20" : "bg-emerald-500 text-slate-950 hover:bg-emerald-400"} w-full`}
                             >
-                                {isStarting ? "Starting..." : isScanning ? "Stop scanner" : "Start camera"}
+                                {isStarting ? "Starting..." : isScanning ? "Stop" : "Start"}
                             </button>
                         </div>
                     </div>
@@ -697,16 +709,12 @@ export default function BarcodeDemoPage() {
 
                 <section className="mt-6 overflow-hidden rounded-[28px] border border-slate-800 bg-slate-900/70 shadow-xl shadow-black/10">
                     <div className="border-b border-slate-800 px-4 py-4 sm:px-6">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex gap-3 justify-between">
                             <div>
-                                <h2 className="text-xl font-bold text-white">Scanned items cart</h2>
-                                <p className="mt-1 text-sm text-slate-400">
-                                    Review items, adjust quantity, and keep scanning without leaving this
-                                    page.
-                                </p>
+                                <h2 className="text-xl font-bold text-white">Scanned items</h2>
                             </div>
 
-                            <div className="rounded-2xl bg-slate-800/80 px-4 py-3 text-sm text-slate-200">
+                            <div className="rounded-2xl bg-slate-800/80 p-1 px-3 text-sm text-slate-200">
                                 <span className="font-semibold text-white">{totalScannedItems}</span> scans ·{" "}
                                 <span className="font-semibold text-white">{scannedItems.length}</span> unique ·{" "}
                                 <span className="font-semibold text-white">{formatTaka(subtotalAmount)}</span>
