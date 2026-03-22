@@ -629,12 +629,11 @@ export default function BarcodeDemoPage() {
                                     <div className="absolute right-4 bottom-4 flex flex-wrap gap-2">
                                         <button
                                             onClick={toggleTorch}
-                                            disabled={!isScanning || !isTorchAvailable}
                                             className={`inline-flex items-center rounded-full p-2 text-xs font-semibold bg-slate-800/90 text-slate-300 ring-1 ring-slate-700`}
                                         >
                                             {isTorchOn
-                                                ? <Flashlight className="w-4 h-4" />
-                                                : <FlashlightOff className="w-4 h-4" />
+                                                ? <FlashlightOff className="w-4 h-4" />
+                                                : <Flashlight className="w-4 h-4" />
                                             }
                                         </button>
                                     </div>
@@ -701,7 +700,7 @@ export default function BarcodeDemoPage() {
                                     }
                                 }}
                                 disabled={isStarting || isSecureOrigin === false}
-                                className={`${baseButton} ${(!isStarting && isScanning) ? "border border-rose-500/30 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20" : "bg-emerald-500 text-slate-950 hover:bg-emerald-400"} w-full`}
+                                className={`text-white ${baseButton} ${(!isStarting && isScanning) ? "border border-rose-500/30 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20" : "bg-emerald-500 text-slate-950 hover:bg-emerald-400"} w-full`}
                             >
                                 {isStarting ? "Starting..." : isScanning ? "Stop" : "Start"}
                             </button>
