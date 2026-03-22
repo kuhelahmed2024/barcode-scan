@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { BrowserMultiFormatOneDReader, type IScannerControls } from "@zxing/browser";
 import { BarcodeFormat, DecodeHintType, type Result } from "@zxing/library";
 import { Flashlight, FlashlightOff } from "lucide-react";
+import { toast } from "sonner";
 
 type NumericCapability = {
     min?: number;
@@ -375,9 +376,17 @@ export default function BarcodeDemoPage() {
             return;
         }
 
+        triggerSuccessFlash();
+
+        const foundProduct = PRODUCTS[text] || null;
+
+        if (!foundProduct){
+            toast.info("Product nor found")
+            return
+        }
+
         activeBarcodeRef.current = text;
         const now = Date.now();
-        const foundProduct = PRODUCTS[text] || null;
         const scannedAt = new Date(now).toLocaleTimeString();
         const format = BarcodeFormat[result.getBarcodeFormat()] || "BARCODE";
 
@@ -397,8 +406,6 @@ export default function BarcodeDemoPage() {
                 ...current.filter((item) => item.barcode !== text),
             ];
         });
-
-        triggerSuccessFlash();
     }
 
     async function startScanner() {
