@@ -266,9 +266,7 @@ export default function BarcodeDemoPage() {
 
     const [error, setError] = useState("");
     const [origin, setOrigin] = useState("");
-    const [scanText, setScanText] = useState("");
     const [isTorchOn, setIsTorchOn] = useState(false);
-    const [cameraLabel, setCameraLabel] = useState("");
     const [isStarting, setIsStarting] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
     const [scanEventCount, setScanEventCount] = useState(0);
@@ -389,7 +387,6 @@ export default function BarcodeDemoPage() {
         const format = BarcodeFormat[result.getBarcodeFormat()] || "BARCODE";
 
         setError("");
-        setScanText(text);
         setScanEventCount((current) => current + 1);
         setScannedItems((current) => {
             const existing = current.find((item) => item.barcode === text);
@@ -465,12 +462,10 @@ export default function BarcodeDemoPage() {
             }
 
             const cameraSetup = await configureTrackForBarcodeCapture(videoRef.current, controlsRef.current);
-            setCameraLabel(cameraSetup.label);
             setIsTorchAvailable(cameraSetup.torchAvailable);
         } catch (err) {
             setError(getCameraErrorMessage(err));
             setIsScanning(false);
-            setCameraLabel("");
             setIsTorchAvailable(false);
             setIsTorchOn(false);
         }
@@ -508,11 +503,9 @@ export default function BarcodeDemoPage() {
     function resetAll() {
         stopScanner();
         activeBarcodeRef.current = null;
-        setScanText("");
         setScannedItems([]);
         setScanEventCount(0);
         setError("");
-        setCameraLabel("");
     }
 
     function updateItemQuantity(barcode: string, delta: number) {
@@ -561,18 +554,12 @@ export default function BarcodeDemoPage() {
         }
     }
 
-    const latestScan = scanText
-        ? scannedItems.find((item) => item.barcode === scanText) ?? null
-        : null;
-
     const totalScannedItems = scannedItems.reduce((total, item) => total + item.quantity, 0);
 
     const subtotalAmount = scannedItems.reduce(
         (total, item) => total + (item.product?.price ?? 0) * item.quantity,
         0
     );
-
-    const unknownItemsCount = scannedItems.filter((item) => !item.product).length;
 
     const statusText = isStarting
         ? "Starting camera..."
@@ -624,21 +611,20 @@ export default function BarcodeDemoPage() {
                                 </span>
                             </div>
 
-                            {
-                                isTorchAvailable && (
-                                    <div className="absolute right-4 bottom-4 flex flex-wrap gap-2">
-                                        <button
-                                            onClick={toggleTorch}
-                                            className={`inline-flex items-center rounded-full p-2 text-xs font-semibold bg-slate-800/90 text-slate-300 ring-1 ring-slate-700`}
-                                        >
-                                            {isTorchOn
-                                                ? <FlashlightOff className="w-4 h-4" />
-                                                : <Flashlight className="w-4 h-4" />
-                                            }
-                                        </button>
-                                    </div>
-                                )
-                            }
+                            {isTorchAvailable ? (
+                                <div className="pointer-events-auto absolute right-4 bottom-4 z-50 flex flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={toggleTorch}
+                                        className="inline-flex cursor-pointer items-center rounded-full bg-slate-800/90 p-4 text-xs font-semibold text-slate-300 ring-1 ring-slate-700 transition hover:bg-slate-700/90"
+                                    >
+                                        {isTorchOn
+                                            ? <FlashlightOff className="h-4 w-4" />
+                                            : <Flashlight className="h-4 w-4" />
+                                        }
+                                    </button>
+                                </div>
+                            ) : null}
 
                             <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 px-5 sm:px-8">
                                 <div

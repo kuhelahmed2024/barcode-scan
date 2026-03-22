@@ -265,7 +265,6 @@ export default function BarcodeDemoPage() {
 
     const [error, setError] = useState("");
     const [origin, setOrigin] = useState("");
-    const [scanText, setScanText] = useState("");
     const [isTorchOn, setIsTorchOn] = useState(false);
     const [cameraLabel, setCameraLabel] = useState("");
     const [isStarting, setIsStarting] = useState(false);
@@ -389,7 +388,6 @@ export default function BarcodeDemoPage() {
         const format = BarcodeFormat[result.getBarcodeFormat()] || "BARCODE";
 
         setError("");
-        setScanText(text);
         setScanEventCount((current) => current + 1);
         setScannedItems((current) => {
             const existing = current.find((item) => item.barcode === text);
@@ -501,6 +499,7 @@ export default function BarcodeDemoPage() {
         activeBarcodeRef.current = null;
         resetSuccessFlash();
         setIsScanning(false);
+        setCameraLabel("");
         setIsTorchAvailable(false);
         setIsTorchOn(false);
     }
@@ -508,7 +507,6 @@ export default function BarcodeDemoPage() {
     function resetAll() {
         stopScanner();
         activeBarcodeRef.current = null;
-        setScanText("");
         setScannedItems([]);
         setScanEventCount(0);
         setError("");
