@@ -413,12 +413,7 @@ export default function BarcodeDemoPage() {
             ];
         });
 
-        if (foundProduct) {
-            triggerSuccessFlash();
-            return;
-        }
-
-        resetSuccessFlash();
+        triggerSuccessFlash();
     }
 
     async function startScanner() {
