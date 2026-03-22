@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { BrowserMultiFormatOneDReader, type IScannerControls } from "@zxing/browser";
 import { BarcodeFormat, DecodeHintType, type Result } from "@zxing/library";
+import { Flashlight, FlashlightOff } from "lucide-react";
 
 type Product = {
     barcode: string;
@@ -266,10 +267,8 @@ export default function BarcodeDemoPage() {
     const [error, setError] = useState("");
     const [origin, setOrigin] = useState("");
     const [isTorchOn, setIsTorchOn] = useState(false);
-    const [cameraLabel, setCameraLabel] = useState("");
     const [isStarting, setIsStarting] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
-    const [isHelpOpen, setIsHelpOpen] = useState(false);
     const [scanEventCount, setScanEventCount] = useState(0);
     const [isTorchAvailable, setIsTorchAvailable] = useState(false);
     const [scannedItems, setScannedItems] = useState<ScannedItem[]>([]);
@@ -463,12 +462,10 @@ export default function BarcodeDemoPage() {
             }
 
             const cameraSetup = await configureTrackForBarcodeCapture(videoRef.current, controlsRef.current);
-            setCameraLabel(cameraSetup.label);
             setIsTorchAvailable(cameraSetup.torchAvailable);
         } catch (err) {
             setError(getCameraErrorMessage(err));
             setIsScanning(false);
-            setCameraLabel("");
             setIsTorchAvailable(false);
             setIsTorchOn(false);
         }
@@ -499,7 +496,6 @@ export default function BarcodeDemoPage() {
         activeBarcodeRef.current = null;
         resetSuccessFlash();
         setIsScanning(false);
-        setCameraLabel("");
         setIsTorchAvailable(false);
         setIsTorchOn(false);
     }
@@ -510,7 +506,6 @@ export default function BarcodeDemoPage() {
         setScannedItems([]);
         setScanEventCount(0);
         setError("");
-        setCameraLabel("");
     }
 
     function updateItemQuantity(barcode: string, delta: number) {
@@ -561,189 +556,270 @@ export default function BarcodeDemoPage() {
 
     const totalScannedItems = scannedItems.reduce((total, item) => total + item.quantity, 0);
 
+    const subtotalAmount = scannedItems.reduce(
+        (total, item) => total + (item.product?.price ?? 0) * item.quantity,
+        0
+    );
+
+    const statusText = isStarting
+        ? "Starting camera..."
+        : isScanning
+            ? "Live scanning"
+            : "Camera stopped";
+
+    const formatTaka = (amount: number) => `Tk ${amount.toLocaleString("en-BD")}`;
+
+    const baseButton =
+        "inline-flex h-12 items-center justify-center rounded-2xl px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50";
+
     return (
-        <main className="min-h-screen bg-white p-6 text-black">
-            <div className="mx-auto max-w-3xl space-y-6">
-                <div className="flex items-start justify-between gap-3">
-                    <h1 className="text-2xl font-bold">Scanner</h1>
-                    <button
-                        type="button"
-                        onClick={() => setIsHelpOpen((current) => !current)}
-                        aria-expanded={isHelpOpen}
-                        aria-controls="scanner-help"
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-300 bg-white text-lg font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:text-slate-950"
-                    >
-                        <span className="sr-only">
-                            {isHelpOpen ? "Hide scanner instructions" : "Show scanner instructions"}
-                        </span>
-                        ?
-                    </button>
-                </div>
-
+        <main className="min-h-screen bg-slate-50 text-slate-900">
+            <div className="mx-auto max-w-6xl px-4 py-2">
                 {isSecureOrigin === false ? (
-                    <div className="space-y-2 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-950">
-                        <p className="font-semibold">Camera is blocked on this connection</p>
-                        <p className="text-sm">
-                            This page is running from <span className="font-mono">{origin}</span>, which is not a secure origin. Desktop Chrome works on <span className="font-mono">localhost</span>, but phones usually open the dev server by IP address and browsers block camera access there unless it is HTTPS.
+                    <div className="mb-6 rounded-3xl border border-amber-300 bg-amber-50 p-4 text-amber-900">
+                        <p className="text-sm font-semibold">Camera is blocked on this connection</p>
+                        <p className="mt-2 text-sm text-amber-800">
+                            Current origin: <span className="font-mono">{origin}</span>. Mobile browsers
+                            usually block camera access on HTTP IP addresses. Use HTTPS or localhost.
                         </p>
-                        <p className="text-sm">
-                            Start the app with <span className="font-mono">npm run dev:phone</span>, then open the printed <span className="font-mono">https://...</span> address on your phone.
-                        </p>
-                        <p className="text-sm">
-                            If the phone still warns about the certificate, trust the mkcert root CA on the phone or use an HTTPS tunnel.
+                        <p className="mt-2 text-sm text-amber-700">
+                            Run your secure dev command, open the printed HTTPS URL on the phone, and
+                            trust the certificate if needed.
                         </p>
                     </div>
                 ) : null}
 
-                {isHelpOpen ? (
-                    <div
-                        id="scanner-help"
-                        className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700"
-                    >
-                        Hold the barcode inside the center strip, keep some distance, and turn on
-                        the torch in low light. Start the camera once, keep scanning products, and
-                        stop it manually when you are done. Only one-dimensional barcodes are
-                        decoded.
-                    </div>
-                ) : null}
+                <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-lg shadow-slate-200/60">
+                    <div className="relative">
+                        <video
+                            ref={videoRef}
+                            className="aspect-16/10 w-full bg-black object-cover"
+                            autoPlay
+                            muted
+                            playsInline
+                        />
 
-                <div className="relative overflow-hidden rounded-2xl border bg-gray-100">
-                    <video
-                        ref={videoRef}
-                        className="aspect-video w-full bg-black object-cover"
-                        autoPlay
-                        muted
-                        playsInline
-                    />
+                        <div className="pointer-events-none absolute inset-0">
+                            <div className="absolute left-4 top-4 flex flex-wrap gap-2">
+                                <span
+                                    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${isScanning
+                                        ? "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200"
+                                        : "bg-white/95 text-slate-700 ring-1 ring-slate-200"
+                                        }`}
+                                >
+                                    {statusText}
+                                </span>
+                            </div>
 
-                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-5">
-                        <div className="w-full max-w-xl">
-                            <div
-                                className={`h-24 rounded-2xl border-2 shadow-[0_0_0_9999px_rgba(0,0,0,0.30)] transition-all duration-200 ${isSuccessFlashActive
-                                    ? "animate-pulse border-emerald-400 bg-emerald-400/10 shadow-[0_0_0_9999px_rgba(16,185,129,0.18)]"
-                                    : "border-white/90"
-                                    }`}
-                            />
-                            <p className="mt-3 text-center text-xs font-semibold uppercase tracking-[0.35em] text-white/90">
-                                Align Barcode Here
-                            </p>
+                            {isTorchAvailable ? (
+                                <div className="pointer-events-auto absolute bottom-4 right-4 z-50 flex flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={toggleTorch}
+                                        className="inline-flex cursor-pointer items-center rounded-full bg-white/95 p-4 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-100"
+                                    >
+                                        {isTorchOn ? (
+                                            <FlashlightOff className="h-4 w-4" />
+                                        ) : (
+                                            <Flashlight className="h-4 w-4" />
+                                        )}
+                                    </button>
+                                </div>
+                            ) : null}
+
+                            <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 px-5 sm:px-8">
+                                <div
+                                    className={`relative mx-auto h-28 max-w-2xl rounded-[28px] border-2 transition-all duration-300 ${isSuccessFlashActive
+                                        ? "border-emerald-400 bg-emerald-400/10 shadow-[0_0_0_9999px_rgba(16,185,129,0.10)]"
+                                        : "border-white/90 bg-white/10 shadow-[0_0_0_9999px_rgba(15,23,42,0.18)]"
+                                        }`}
+                                >
+                                    <div
+                                        className={`absolute inset-x-6 top-1/2 h-px -translate-y-1/2 ${isScanning ? "bg-emerald-400/90 animate-pulse" : "bg-white/70"
+                                            }`}
+                                    />
+                                </div>
+
+                                <p className="mt-3 text-center text-xs font-semibold uppercase text-white sm:text-sm">
+                                    Center barcode inside the frame
+                                </p>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div className="flex flex-wrap gap-3 justify-end">
-
-                    <button
-                        onClick={stopScanner}
-                        disabled={!isScanning}
-                        className="rounded-lg border px-4 py-2 disabled:opacity-50"
-                    >
-                        Stop
-                    </button>
-
-                    {isTorchAvailable ? (
-                        <button
-                            onClick={toggleTorch}
-                            disabled={!isScanning}
-                            className="rounded-lg border px-4 py-2 disabled:opacity-50"
-                        >
-                            {isTorchOn ? "Torch Off" : "Torch On"}
-                        </button>
+                    {error ? (
+                        <div className="border-t border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                            {error}
+                        </div>
                     ) : null}
 
-                    <button
-                        onClick={resetAll}
-                        className="rounded-lg border px-4 py-2"
-                    >
-                        Reset
-                    </button>
+                    <div className="border-t border-slate-200 p-4 sm:p-5">
+                        <div className="flex justify-around gap-2">
+                            <button
+                                type="button"
+                                onClick={resetAll}
+                                className={`${baseButton} w-full border border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-100`}
+                            >
+                                Reset all
+                            </button>
 
-                    <button
-                        onClick={startScanner}
-                        disabled={isStarting || isScanning || isSecureOrigin === false}
-                        className="rounded-lg bg-black px-4 py-2 text-white disabled:opacity-50"
-                    >
-                        {isStarting ? "Starting..." : isScanning ? "Scanning..." : "Start Camera"}
-                    </button>
-                </div>
-
-                {cameraLabel ? (
-                    <p className="text-sm text-gray-600">Using camera: {cameraLabel}</p>
-                ) : null}
-
-                {error ? (
-                    <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 md:col-span-2">
-                        {error}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (!isStarting && isScanning) {
+                                        stopScanner();
+                                    } else {
+                                        startScanner();
+                                    }
+                                }}
+                                disabled={isStarting || isSecureOrigin === false}
+                                className={`${baseButton} w-full ${!isStarting && isScanning
+                                    ? "border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+                                    : "bg-emerald-500 text-white hover:bg-emerald-600"
+                                    }`}
+                            >
+                                {isStarting ? "Starting..." : isScanning ? "Stop" : "Start"}
+                            </button>
+                        </div>
                     </div>
-                ) : null}
+                </section>
 
-                <div className={`${scannedItems.length > 0 && "h-screen"} rounded-2xl border p-4`}>
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                        <h2 className="text-lg font-semibold">Scanned Items</h2>
-                        <p className="text-sm text-gray-600">
-                            {totalScannedItems} total scans - {scannedItems.length} unique barcodes
-                        </p>
+                <section className="mt-6 overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-lg shadow-slate-200/50">
+                    <div className="border-b border-slate-200 px-4 py-4 sm:px-6">
+                        <div className="flex justify-between gap-3">
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-900">Scanned items</h2>
+                            </div>
+
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-1 px-3 text-sm text-slate-700">
+                                <span className="font-semibold text-slate-900">{totalScannedItems}</span> scans ·{" "}
+                                <span className="font-semibold text-slate-900">{scannedItems.length}</span> unique ·{" "}
+                                <span className="font-semibold text-slate-900">{formatTaka(subtotalAmount)}</span>
+                            </div>
+                        </div>
                     </div>
 
                     {scannedItems.length ? (
                         <div
                             ref={scannedItemsContainerRef}
-                            className="mt-4 max-h-96 space-y-3 overflow-y-auto pr-1"
+                            className="max-h-136 overflow-y-auto p-4 sm:p-6"
                         >
-                            {scannedItems.map((item) => (
-                                <div key={item.barcode} className="rounded-xl border border-slate-200 p-4">
-                                    <div className="flex flex-wrap items-start justify-between gap-3">
-                                        <div>
-                                            <div className="text-base font-semibold">
-                                                {item.product?.name ?? "Unknown product"}
-                                            </div>
-                                            <div className="font-mono text-sm text-slate-600">
-                                                {item.barcode}
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => updateItemQuantity(item.barcode, -1)}
-                                                aria-label={
-                                                    item.quantity === 1
-                                                        ? `Remove ${item.product?.name ?? item.barcode}`
-                                                        : `Decrease quantity for ${item.product?.name ?? item.barcode}`
-                                                }
-                                                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 text-lg font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-950"
-                                            >
-                                                -
-                                            </button>
-                                            <div className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
-                                                Qty {item.quantity}
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => updateItemQuantity(item.barcode, 1)}
-                                                aria-label={`Increase quantity for ${item.product?.name ?? item.barcode}`}
-                                                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 text-lg font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-950"
-                                            >
-                                                +
-                                            </button>
-                                        </div>
-                                    </div>
+                            <div className="space-y-4">
+                                {scannedItems.map((item) => {
+                                    const lineTotal = (item.product?.price ?? 0) * item.quantity;
 
-                                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-700">
-                                        <div><strong>Format:</strong> {item.format}</div>
-                                        {item.product ? <div><strong>SKU:</strong> {item.product.sku}</div> : null}
-                                        {item.product ? <div><strong>Price:</strong> Tk {item.product.price}</div> : null}
-                                        <div><strong>Last scan:</strong> {item.scannedAt}</div>
-                                    </div>
-                                </div>
-                            ))}
+                                    return (
+                                        <div
+                                            key={item.barcode}
+                                            className="rounded-3xl border border-slate-200 bg-slate-50 p-4 transition hover:border-slate-300 hover:bg-white"
+                                        >
+                                            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <h3 className="text-lg font-semibold text-slate-900">
+                                                            {item.product?.name ?? "Unknown product"}
+                                                        </h3>
+
+                                                        {item.product ? (
+                                                            <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">
+                                                                SKU {item.product.sku}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700">
+                                                                Needs product mapping
+                                                            </span>
+                                                        )}
+                                                    </div>
+
+                                                    <p className="mt-2 break-all font-mono text-xs text-slate-500">
+                                                        {item.barcode}
+                                                    </p>
+
+                                                    <div className="mt-4 flex flex-wrap gap-2">
+                                                        <span className="rounded-full bg-white px-3 py-1 text-xs text-slate-600 ring-1 ring-slate-200">
+                                                            Format: {item.format}
+                                                        </span>
+                                                        <span className="rounded-full bg-white px-3 py-1 text-xs text-slate-600 ring-1 ring-slate-200">
+                                                            Last scan: {item.scannedAt}
+                                                        </span>
+                                                        {item.product ? (
+                                                            <>
+                                                                <span className="rounded-full bg-white px-3 py-1 text-xs text-slate-600 ring-1 ring-slate-200">
+                                                                    Unit price: {formatTaka(item.product.price)}
+                                                                </span>
+                                                                <span className="rounded-full bg-white px-3 py-1 text-xs text-slate-600 ring-1 ring-slate-200">
+                                                                    Stock: {item.product.stock}
+                                                                </span>
+                                                            </>
+                                                        ) : null}
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex flex-col gap-4 lg:items-end">
+                                                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left lg:text-right">
+                                                        <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                                                            Line total
+                                                        </p>
+                                                        <p className="mt-1 text-2xl font-bold text-slate-900">
+                                                            {formatTaka(lineTotal)}
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2 py-2 shadow-sm">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => updateItemQuantity(item.barcode, -1)}
+                                                            aria-label={
+                                                                item.quantity === 1
+                                                                    ? `Remove ${item.product?.name ?? item.barcode}`
+                                                                    : `Decrease quantity for ${item.product?.name ?? item.barcode}`
+                                                            }
+                                                            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-slate-50 text-lg font-bold text-slate-700 transition hover:border-slate-400 hover:bg-slate-100"
+                                                        >
+                                                            −
+                                                        </button>
+
+                                                        <div className="min-w-21 text-center">
+                                                            <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                                                                Quantity
+                                                            </p>
+                                                            <p className="text-lg font-bold text-slate-900">
+                                                                {item.quantity}
+                                                            </p>
+                                                        </div>
+
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => updateItemQuantity(item.barcode, 1)}
+                                                            aria-label={`Increase quantity for ${item.product?.name ?? item.barcode}`}
+                                                            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-lg font-bold text-emerald-700 transition hover:bg-emerald-100"
+                                                        >
+                                                            +
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
                     ) : (
-                        <p className="mt-4 text-sm text-gray-600">
-                            No items scanned yet.
-                        </p>
+                        <div className="px-6 py-16 text-center">
+                            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-2xl">
+                                📦
+                            </div>
+                            <h3 className="mt-4 text-xl font-semibold text-slate-900">
+                                No items scanned yet
+                            </h3>
+                            <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">
+                                Start the camera and scan a product barcode. New items will appear here
+                                instantly with quantity controls and pricing details.
+                            </p>
+                        </div>
                     )}
-                </div>
+                </section>
             </div>
         </main>
-    );
+    )
 }
