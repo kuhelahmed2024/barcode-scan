@@ -5,22 +5,6 @@ import { BrowserMultiFormatOneDReader, type IScannerControls } from "@zxing/brow
 import { BarcodeFormat, DecodeHintType, type Result } from "@zxing/library";
 import { Flashlight, FlashlightOff } from "lucide-react";
 
-type Product = {
-    barcode: string;
-    name: string;
-    price: number;
-    stock: number;
-    sku: string;
-};
-
-type ScannedItem = {
-    barcode: string;
-    format: string;
-    product: Product | null;
-    quantity: number;
-    scannedAt: string;
-};
-
 type NumericCapability = {
     min?: number;
     max?: number;
@@ -49,34 +33,45 @@ type CameraSetup = {
     torchAvailable: boolean;
 };
 
+type Product = {
+    barcode: string;
+    name: string;
+    price: number;
+    stock: number;
+};
+
+type ScannedItem = {
+    barcode: string;
+    format: string;
+    product: Product | null;
+    quantity: number;
+    scannedAt: string;
+};
+
 const PRODUCTS: Record<string, Product> = {
     "8901234567890": {
         barcode: "8901234567890",
         name: "Coca Cola 250ml",
         price: 35,
         stock: 24,
-        sku: "DRK-001",
     },
     "842251152516": {
         barcode: "842251152516",
         name: "Good Luck Book",
         price: 120,
         stock: 12,
-        sku: "SOAP-005",
     },
     "1234567890128": {
         barcode: "1234567890128",
         name: "Lux Soap",
         price: 55,
         stock: 12,
-        sku: "SOAP-002",
     },
     "9876543210987": {
         barcode: "9876543210987",
         name: "Pran Biscuit",
         price: 20,
         stock: 48,
-        sku: "BIS-003",
     },
 };
 
@@ -271,7 +266,32 @@ export default function BarcodeDemoPage() {
     const [isScanning, setIsScanning] = useState(false);
     const [scanEventCount, setScanEventCount] = useState(0);
     const [isTorchAvailable, setIsTorchAvailable] = useState(false);
-    const [scannedItems, setScannedItems] = useState<ScannedItem[]>([]);
+    const [scannedItems, setScannedItems] = useState<ScannedItem[]>([
+        {
+            barcode: "8901234567890",
+            format: "BINNH",
+            product: {
+                barcode: "8901234567890",
+                name: "Coca Cola 250ml",
+                price: 35,
+                stock: 24,
+            },
+            quantity: 2,
+            scannedAt: String(new Date()),
+        },
+        {
+            barcode: "8901234567890",
+            format: "BINNH",
+            product: {
+                barcode: "8901234567890",
+                name: "Coca Cola 250ml",
+                price: 35,
+                stock: 24,
+            },
+            quantity: 2,
+            scannedAt: String(new Date()),
+        }
+    ]);
     const [isSuccessFlashActive, setIsSuccessFlashActive] = useState(false);
     const [isSecureOrigin, setIsSecureOrigin] = useState<boolean | null>(null);
 
@@ -574,7 +594,7 @@ export default function BarcodeDemoPage() {
 
     return (
         <main className="min-h-screen bg-slate-50 text-slate-900">
-            <div className="mx-auto max-w-6xl">
+            <div className="mx-auto max-w-6xl px-4">
                 {isSecureOrigin === false ? (
                     <div className="mb-6 rounded-3xl border border-amber-300 bg-amber-50 p-4 text-amber-900">
                         <p className="text-sm font-semibold">Camera is blocked on this connection</p>
@@ -702,70 +722,49 @@ export default function BarcodeDemoPage() {
                     {scannedItems.length ? (
                         <div
                             ref={scannedItemsContainerRef}
-                            className="max-h-136 overflow-y-auto p-4 sm:p-6"
+                            className="max-h-128 overflow-y-auto"
                         >
-                            <div className="space-y-4">
+                            <div>
                                 {scannedItems.map((item) => {
                                     const lineTotal = (item.product?.price ?? 0) * item.quantity;
 
                                     return (
                                         <div
                                             key={item.barcode}
-                                            className="rounded-3xl border border-slate-200 bg-slate-50 p-4 transition hover:border-slate-300 hover:bg-white"
+                                            className="border-b border-slate-200 bg-slate-50 px-3 py-2.5 transition hover:border-slate-300 hover:bg-white"
                                         >
-                                            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                            <div className="flex items-center justify-between gap-3">
                                                 <div className="min-w-0 flex-1">
-                                                    <div className="flex flex-wrap items-center gap-2">
-                                                        <h3 className="text-lg font-semibold text-slate-900">
+                                                    <div className="flex items-center gap-2">
+                                                        <h3 className="truncate text-sm font-semibold text-slate-900">
                                                             {item.product?.name ?? "Unknown product"}
                                                         </h3>
-
-                                                        {item.product ? (
-                                                            <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">
-                                                                SKU {item.product.sku}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700">
-                                                                Needs product mapping
-                                                            </span>
-                                                        )}
                                                     </div>
 
-                                                    <p className="mt-2 break-all font-mono text-xs text-slate-500">
+                                                    <p className="mt-0.5 truncate font-mono text-[11px] text-slate-500">
                                                         {item.barcode}
                                                     </p>
 
-                                                    <div className="mt-4 flex flex-wrap gap-2">
-                                                        <span className="rounded-full bg-white px-3 py-1 text-xs text-slate-600 ring-1 ring-slate-200">
-                                                            Format: {item.format}
-                                                        </span>
-                                                        <span className="rounded-full bg-white px-3 py-1 text-xs text-slate-600 ring-1 ring-slate-200">
-                                                            Last scan: {item.scannedAt}
-                                                        </span>
-                                                        {item.product ? (
-                                                            <>
-                                                                <span className="rounded-full bg-white px-3 py-1 text-xs text-slate-600 ring-1 ring-slate-200">
-                                                                    Unit price: {formatTaka(item.product.price)}
-                                                                </span>
-                                                                <span className="rounded-full bg-white px-3 py-1 text-xs text-slate-600 ring-1 ring-slate-200">
-                                                                    Stock: {item.product.stock}
-                                                                </span>
-                                                            </>
-                                                        ) : null}
-                                                    </div>
+                                                    {item.product ? (
+                                                        <div className="mt-1 flex flex-wrap gap-1.5">
+                                                            <span className="rounded-full bg-white px-2 py-0.5 text-[11px] text-slate-600 ring-1 ring-slate-200">
+                                                                {formatTaka(item.product.price)}
+                                                            </span>
+                                                        </div>
+                                                    ) : null}
                                                 </div>
 
-                                                <div className="flex flex-col gap-4 lg:items-end">
-                                                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left lg:text-right">
-                                                        <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
-                                                            Line total
+                                                <div className="flex items-center gap-3">
+                                                    <div className="text-right">
+                                                        <p className="text-[10px] uppercase tracking-[0.14em] text-slate-500">
+                                                            Total
                                                         </p>
-                                                        <p className="mt-1 text-2xl font-bold text-slate-900">
+                                                        <p className="text-sm font-bold text-slate-900">
                                                             {formatTaka(lineTotal)}
                                                         </p>
                                                     </div>
 
-                                                    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2 py-2 shadow-sm">
+                                                    <div className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-1.5 py-1 shadow-sm">
                                                         <button
                                                             type="button"
                                                             onClick={() => updateItemQuantity(item.barcode, -1)}
@@ -774,16 +773,13 @@ export default function BarcodeDemoPage() {
                                                                     ? `Remove ${item.product?.name ?? item.barcode}`
                                                                     : `Decrease quantity for ${item.product?.name ?? item.barcode}`
                                                             }
-                                                            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-slate-50 text-lg font-bold text-slate-700 transition hover:border-slate-400 hover:bg-slate-100"
+                                                            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-300 bg-slate-50 text-base font-bold text-slate-700 transition hover:border-slate-400 hover:bg-slate-100"
                                                         >
                                                             −
                                                         </button>
 
-                                                        <div className="min-w-21 text-center">
-                                                            <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
-                                                                Quantity
-                                                            </p>
-                                                            <p className="text-lg font-bold text-slate-900">
+                                                        <div className="min-w-10.5 text-center">
+                                                            <p className="text-sm font-semibold text-slate-900">
                                                                 {item.quantity}
                                                             </p>
                                                         </div>
@@ -792,7 +788,7 @@ export default function BarcodeDemoPage() {
                                                             type="button"
                                                             onClick={() => updateItemQuantity(item.barcode, 1)}
                                                             aria-label={`Increase quantity for ${item.product?.name ?? item.barcode}`}
-                                                            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-lg font-bold text-emerald-700 transition hover:bg-emerald-100"
+                                                            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-base font-bold text-emerald-700 transition hover:bg-emerald-100"
                                                         >
                                                             +
                                                         </button>
