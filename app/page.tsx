@@ -255,30 +255,27 @@ async function setTrackTorch(videoElement: HTMLVideoElement | null, enabled: boo
 }
 
 export default function BarcodeDemoPage() {
-    const videoRef = useRef<HTMLVideoElement | null>(null);
-    const readerRef = useRef<BrowserMultiFormatOneDReader | null>(null);
-    const controlsRef = useRef<IScannerControls | null>(null);
     const activeBarcodeRef = useRef<string | null>(null);
-    const clearActiveBarcodeTimeoutRef = useRef<number | null>(null);
+    const videoRef = useRef<HTMLVideoElement | null>(null);
+    const controlsRef = useRef<IScannerControls | null>(null);
     const successFlashTimeoutRef = useRef<number | null>(null);
+    const clearActiveBarcodeTimeoutRef = useRef<number | null>(null);
+    const readerRef = useRef<BrowserMultiFormatOneDReader | null>(null);
     const scannedItemsContainerRef = useRef<HTMLDivElement | null>(null);
 
+    const [error, setError] = useState("");
+    const [origin, setOrigin] = useState("");
+    const [scanText, setScanText] = useState("");
+    const [isTorchOn, setIsTorchOn] = useState(false);
+    const [cameraLabel, setCameraLabel] = useState("");
     const [isStarting, setIsStarting] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
-    const [isSuccessFlashActive, setIsSuccessFlashActive] = useState(false);
-    const [scanText, setScanText] = useState("");
-    const [scanFormat, setScanFormat] = useState("");
-    const [lastScannedAt, setLastScannedAt] = useState("");
-    const [product, setProduct] = useState<Product | null>(null);
-    const [scannedItems, setScannedItems] = useState<ScannedItem[]>([]);
     const [scanEventCount, setScanEventCount] = useState(0);
-    const [error, setError] = useState("");
-    const [cameraLabel, setCameraLabel] = useState("");
-    const [origin, setOrigin] = useState("");
-    const [isSecureOrigin, setIsSecureOrigin] = useState<boolean | null>(null);
     const [isTorchAvailable, setIsTorchAvailable] = useState(false);
-    const [isTorchOn, setIsTorchOn] = useState(false);
+    const [scannedItems, setScannedItems] = useState<ScannedItem[]>([]);
+    const [isSuccessFlashActive, setIsSuccessFlashActive] = useState(false);
+    const [isSecureOrigin, setIsSecureOrigin] = useState<boolean | null>(null);
 
     useEffect(() => {
         setOrigin(window.location.origin);
@@ -387,16 +384,12 @@ export default function BarcodeDemoPage() {
 
         activeBarcodeRef.current = text;
         const now = Date.now();
-        const format = BarcodeFormat[result.getBarcodeFormat()] || "BARCODE";
-        const scannedAt = new Date(now).toLocaleTimeString();
-
-        setScanText(text);
-        setScanFormat(format);
-        setLastScannedAt(scannedAt);
-
         const foundProduct = PRODUCTS[text] || null;
-        setProduct(foundProduct);
+        const scannedAt = new Date(now).toLocaleTimeString();
+        const format = BarcodeFormat[result.getBarcodeFormat()] || "BARCODE";
+
         setError("");
+        setScanText(text);
         setScanEventCount((current) => current + 1);
         setScannedItems((current) => {
             const existing = current.find((item) => item.barcode === text);
@@ -516,9 +509,6 @@ export default function BarcodeDemoPage() {
         stopScanner();
         activeBarcodeRef.current = null;
         setScanText("");
-        setScanFormat("");
-        setLastScannedAt("");
-        setProduct(null);
         setScannedItems([]);
         setScanEventCount(0);
         setError("");
@@ -571,22 +561,19 @@ export default function BarcodeDemoPage() {
         }
     }
 
-    const latestScan = scanText
-        ? scannedItems.find((item) => item.barcode === scanText) ?? null
-        : null;
     const totalScannedItems = scannedItems.reduce((total, item) => total + item.quantity, 0);
 
     return (
         <main className="min-h-screen bg-white p-6 text-black">
             <div className="mx-auto max-w-3xl space-y-6">
                 <div className="flex items-start justify-between gap-3">
-                    <h1 className="text-2xl font-bold">Barcode Scanner Demo</h1>
+                    <h1 className="text-2xl font-bold">Scanner</h1>
                     <button
                         type="button"
                         onClick={() => setIsHelpOpen((current) => !current)}
                         aria-expanded={isHelpOpen}
                         aria-controls="scanner-help"
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-lg font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:text-slate-950"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-300 bg-white text-lg font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:text-slate-950"
                     >
                         <span className="sr-only">
                             {isHelpOpen ? "Hide scanner instructions" : "Show scanner instructions"}
@@ -634,11 +621,10 @@ export default function BarcodeDemoPage() {
                     <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-5">
                         <div className="w-full max-w-xl">
                             <div
-                                className={`h-24 rounded-2xl border-2 shadow-[0_0_0_9999px_rgba(0,0,0,0.30)] transition-all duration-200 ${
-                                    isSuccessFlashActive
-                                        ? "animate-pulse border-emerald-400 bg-emerald-400/10 shadow-[0_0_0_9999px_rgba(16,185,129,0.18)]"
-                                        : "border-white/90"
-                                }`}
+                                className={`h-24 rounded-2xl border-2 shadow-[0_0_0_9999px_rgba(0,0,0,0.30)] transition-all duration-200 ${isSuccessFlashActive
+                                    ? "animate-pulse border-emerald-400 bg-emerald-400/10 shadow-[0_0_0_9999px_rgba(16,185,129,0.18)]"
+                                    : "border-white/90"
+                                    }`}
                             />
                             <p className="mt-3 text-center text-xs font-semibold uppercase tracking-[0.35em] text-white/90">
                                 Align Barcode Here
@@ -687,59 +673,13 @@ export default function BarcodeDemoPage() {
                     <p className="text-sm text-gray-600">Using camera: {cameraLabel}</p>
                 ) : null}
 
-                <div className="grid gap-4 rounded-2xl border p-4 md:grid-cols-2">
-                    <div>
-                        <div className="text-sm text-gray-500">Last scanned barcode</div>
-                        <div className="font-mono text-lg">{scanText || "No scan yet"}</div>
+                {error ? (
+                    <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 md:col-span-2">
+                        {error}
                     </div>
+                ) : null}
 
-                    <div>
-                        <div className="text-sm text-gray-500">Detected format</div>
-                        <div className="font-mono text-lg">{scanFormat || "1D barcode only"}</div>
-                    </div>
-
-                    {scanText ? (
-                        <div
-                            className={`space-y-2 rounded-xl border p-4 md:col-span-2 ${product
-                                    ? "border-green-200 bg-green-50"
-                                    : "border-amber-200 bg-amber-50"
-                                }`}
-                        >
-                            <h2 className="text-lg font-semibold">
-                                {product ? "Latest Product" : "Latest Scan"}
-                            </h2>
-                            {product ? (
-                                <>
-                                    <div><strong>Name:</strong> {product.name}</div>
-                                    <div><strong>Barcode:</strong> {product.barcode}</div>
-                                    <div><strong>SKU:</strong> {product.sku}</div>
-                                    <div><strong>Price:</strong> Tk {product.price}</div>
-                                    <div><strong>Stock:</strong> {product.stock}</div>
-                                </>
-                            ) : (
-                                <div>This barcode is not in the product list yet.</div>
-                            )}
-                            {latestScan ? (
-                                <div><strong>Scanned count:</strong> {latestScan.quantity}</div>
-                            ) : null}
-                            {lastScannedAt ? (
-                                <div><strong>Last scanned at:</strong> {lastScannedAt}</div>
-                            ) : null}
-                        </div>
-                    ) : (
-                        <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4 md:col-span-2">
-                            No scan yet. Start the camera and keep scanning until you press Stop.
-                        </div>
-                    )}
-
-                    {error ? (
-                        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 md:col-span-2">
-                            {error}
-                        </div>
-                    ) : null}
-                </div>
-
-                <div className="rounded-2xl border p-4">
+                <div className={`${scannedItems.length > 0 && "h-screen"} rounded-2xl border p-4`}>
                     <div className="flex flex-wrap items-center justify-between gap-2">
                         <h2 className="text-lg font-semibold">Scanned Items</h2>
                         <p className="text-sm text-gray-600">
