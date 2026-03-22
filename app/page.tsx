@@ -260,13 +260,19 @@ export default function BarcodeDemoPage() {
     const controlsRef = useRef<IScannerControls | null>(null);
     const activeBarcodeRef = useRef<string | null>(null);
     const clearActiveBarcodeTimeoutRef = useRef<number | null>(null);
+    const successFlashTimeoutRef = useRef<number | null>(null);
+    const scannedItemsContainerRef = useRef<HTMLDivElement | null>(null);
 
     const [isStarting, setIsStarting] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
+    const [isHelpOpen, setIsHelpOpen] = useState(false);
+    const [isSuccessFlashActive, setIsSuccessFlashActive] = useState(false);
     const [scanText, setScanText] = useState("");
     const [scanFormat, setScanFormat] = useState("");
+    const [lastScannedAt, setLastScannedAt] = useState("");
     const [product, setProduct] = useState<Product | null>(null);
     const [scannedItems, setScannedItems] = useState<ScannedItem[]>([]);
+    const [scanEventCount, setScanEventCount] = useState(0);
     const [error, setError] = useState("");
     const [cameraLabel, setCameraLabel] = useState("");
     const [origin, setOrigin] = useState("");
@@ -282,6 +288,10 @@ export default function BarcodeDemoPage() {
         return () => {
             if (clearActiveBarcodeTimeoutRef.current !== null) {
                 window.clearTimeout(clearActiveBarcodeTimeoutRef.current);
+            }
+
+            if (successFlashTimeoutRef.current !== null) {
+                window.clearTimeout(successFlashTimeoutRef.current);
             }
 
             try {
@@ -305,6 +315,17 @@ export default function BarcodeDemoPage() {
         };
     }, []);
 
+    useEffect(() => {
+        if (!scanEventCount) {
+            return;
+        }
+
+        scannedItemsContainerRef.current?.scrollTo({
+            top: 0,
+            behavior: "smooth",
+        });
+    }, [scanEventCount]);
+
     function clearPendingBarcodeReset() {
         if (clearActiveBarcodeTimeoutRef.current === null) {
             return;
@@ -320,6 +341,29 @@ export default function BarcodeDemoPage() {
             activeBarcodeRef.current = null;
             clearActiveBarcodeTimeoutRef.current = null;
         }, BARCODE_RESET_DELAY_MS);
+    }
+
+    function clearSuccessFlashTimer() {
+        if (successFlashTimeoutRef.current === null) {
+            return;
+        }
+
+        window.clearTimeout(successFlashTimeoutRef.current);
+        successFlashTimeoutRef.current = null;
+    }
+
+    function resetSuccessFlash() {
+        clearSuccessFlashTimer();
+        setIsSuccessFlashActive(false);
+    }
+
+    function triggerSuccessFlash() {
+        clearSuccessFlashTimer();
+        setIsSuccessFlashActive(true);
+        successFlashTimeoutRef.current = window.setTimeout(() => {
+            setIsSuccessFlashActive(false);
+            successFlashTimeoutRef.current = null;
+        }, 850);
     }
 
     function handleScanResult(result: Result | undefined, _error: unknown, controls: IScannerControls) {
@@ -348,10 +392,12 @@ export default function BarcodeDemoPage() {
 
         setScanText(text);
         setScanFormat(format);
+        setLastScannedAt(scannedAt);
 
         const foundProduct = PRODUCTS[text] || null;
         setProduct(foundProduct);
         setError("");
+        setScanEventCount((current) => current + 1);
         setScannedItems((current) => {
             const existing = current.find((item) => item.barcode === text);
 
@@ -366,6 +412,13 @@ export default function BarcodeDemoPage() {
                 ...current.filter((item) => item.barcode !== text),
             ];
         });
+
+        if (foundProduct) {
+            triggerSuccessFlash();
+            return;
+        }
+
+        resetSuccessFlash();
     }
 
     async function startScanner() {
@@ -374,6 +427,7 @@ export default function BarcodeDemoPage() {
             setIsStarting(true);
             setIsTorchOn(false);
             setIsTorchAvailable(false);
+            resetSuccessFlash();
             clearPendingBarcodeReset();
             activeBarcodeRef.current = null;
 
@@ -457,6 +511,7 @@ export default function BarcodeDemoPage() {
         controlsRef.current = null;
         clearPendingBarcodeReset();
         activeBarcodeRef.current = null;
+        resetSuccessFlash();
         setIsScanning(false);
         setIsTorchAvailable(false);
         setIsTorchOn(false);
@@ -467,10 +522,34 @@ export default function BarcodeDemoPage() {
         activeBarcodeRef.current = null;
         setScanText("");
         setScanFormat("");
+        setLastScannedAt("");
         setProduct(null);
         setScannedItems([]);
+        setScanEventCount(0);
         setError("");
         setCameraLabel("");
+    }
+
+    function updateItemQuantity(barcode: string, delta: number) {
+        setScannedItems((current) =>
+            current.flatMap((item) => {
+                if (item.barcode !== barcode) {
+                    return [item];
+                }
+
+                const nextQuantity = item.quantity + delta;
+                if (nextQuantity <= 0) {
+                    return [];
+                }
+
+                return [
+                    {
+                        ...item,
+                        quantity: nextQuantity,
+                    },
+                ];
+            })
+        );
     }
 
     async function toggleTorch() {
@@ -497,14 +576,28 @@ export default function BarcodeDemoPage() {
         }
     }
 
-    const latestScan = scannedItems[0] ?? null;
+    const latestScan = scanText
+        ? scannedItems.find((item) => item.barcode === scanText) ?? null
+        : null;
     const totalScannedItems = scannedItems.reduce((total, item) => total + item.quantity, 0);
 
     return (
         <main className="min-h-screen bg-white p-6 text-black">
             <div className="mx-auto max-w-3xl space-y-6">
-                <div>
+                <div className="flex items-start justify-between gap-3">
                     <h1 className="text-2xl font-bold">Barcode Scanner Demo</h1>
+                    <button
+                        type="button"
+                        onClick={() => setIsHelpOpen((current) => !current)}
+                        aria-expanded={isHelpOpen}
+                        aria-controls="scanner-help"
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-lg font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:text-slate-950"
+                    >
+                        <span className="sr-only">
+                            {isHelpOpen ? "Hide scanner instructions" : "Show scanner instructions"}
+                        </span>
+                        ?
+                    </button>
                 </div>
 
                 {isSecureOrigin === false ? (
@@ -522,11 +615,17 @@ export default function BarcodeDemoPage() {
                     </div>
                 ) : null}
 
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-                    Hold the barcode inside the center strip, keep some distance, and turn on the
-                    torch in low light. Start the camera once, keep scanning products, and stop it
-                    manually when you are done. Only one-dimensional barcodes are decoded.
-                </div>
+                {isHelpOpen ? (
+                    <div
+                        id="scanner-help"
+                        className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700"
+                    >
+                        Hold the barcode inside the center strip, keep some distance, and turn on
+                        the torch in low light. Start the camera once, keep scanning products, and
+                        stop it manually when you are done. Only one-dimensional barcodes are
+                        decoded.
+                    </div>
+                ) : null}
 
                 <div className="relative overflow-hidden rounded-2xl border bg-gray-100">
                     <video
@@ -539,7 +638,13 @@ export default function BarcodeDemoPage() {
 
                     <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-5">
                         <div className="w-full max-w-xl">
-                            <div className="h-24 rounded-2xl border-2 border-white/90 shadow-[0_0_0_9999px_rgba(0,0,0,0.30)]" />
+                            <div
+                                className={`h-24 rounded-2xl border-2 shadow-[0_0_0_9999px_rgba(0,0,0,0.30)] transition-all duration-200 ${
+                                    isSuccessFlashActive
+                                        ? "animate-pulse border-emerald-400 bg-emerald-400/10 shadow-[0_0_0_9999px_rgba(16,185,129,0.18)]"
+                                        : "border-white/90"
+                                }`}
+                            />
                             <p className="mt-3 text-center text-xs font-semibold uppercase tracking-[0.35em] text-white/90">
                                 Align Barcode Here
                             </p>
@@ -622,8 +727,8 @@ export default function BarcodeDemoPage() {
                             {latestScan ? (
                                 <div><strong>Scanned count:</strong> {latestScan.quantity}</div>
                             ) : null}
-                            {latestScan ? (
-                                <div><strong>Last scanned at:</strong> {latestScan.scannedAt}</div>
+                            {lastScannedAt ? (
+                                <div><strong>Last scanned at:</strong> {lastScannedAt}</div>
                             ) : null}
                         </div>
                     ) : (
@@ -648,7 +753,10 @@ export default function BarcodeDemoPage() {
                     </div>
 
                     {scannedItems.length ? (
-                        <div className="mt-4 space-y-3">
+                        <div
+                            ref={scannedItemsContainerRef}
+                            className="mt-4 max-h-96 space-y-3 overflow-y-auto pr-1"
+                        >
                             {scannedItems.map((item) => (
                                 <div key={item.barcode} className="rounded-xl border border-slate-200 p-4">
                                     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -660,8 +768,30 @@ export default function BarcodeDemoPage() {
                                                 {item.barcode}
                                             </div>
                                         </div>
-                                        <div className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
-                                            Qty {item.quantity}
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => updateItemQuantity(item.barcode, -1)}
+                                                aria-label={
+                                                    item.quantity === 1
+                                                        ? `Remove ${item.product?.name ?? item.barcode}`
+                                                        : `Decrease quantity for ${item.product?.name ?? item.barcode}`
+                                                }
+                                                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 text-lg font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-950"
+                                            >
+                                                -
+                                            </button>
+                                            <div className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
+                                                Qty {item.quantity}
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => updateItemQuantity(item.barcode, 1)}
+                                                aria-label={`Increase quantity for ${item.product?.name ?? item.barcode}`}
+                                                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 text-lg font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-950"
+                                            >
+                                                +
+                                            </button>
                                         </div>
                                     </div>
 
