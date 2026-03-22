@@ -266,32 +266,7 @@ export default function BarcodeDemoPage() {
     const [isScanning, setIsScanning] = useState(false);
     const [scanEventCount, setScanEventCount] = useState(0);
     const [isTorchAvailable, setIsTorchAvailable] = useState(false);
-    const [scannedItems, setScannedItems] = useState<ScannedItem[]>([
-        {
-            barcode: "8901234567890",
-            format: "BINNH",
-            product: {
-                barcode: "8901234567890",
-                name: "Coca Cola 250ml",
-                price: 35,
-                stock: 24,
-            },
-            quantity: 2,
-            scannedAt: String(new Date()),
-        },
-        {
-            barcode: "8901234567890",
-            format: "BINNH",
-            product: {
-                barcode: "8901234567890",
-                name: "Coca Cola 250ml",
-                price: 35,
-                stock: 24,
-            },
-            quantity: 2,
-            scannedAt: String(new Date()),
-        }
-    ]);
+    const [scannedItems, setScannedItems] = useState<ScannedItem[]>([]);
     const [isSuccessFlashActive, setIsSuccessFlashActive] = useState(false);
     const [isSecureOrigin, setIsSecureOrigin] = useState<boolean | null>(null);
 
