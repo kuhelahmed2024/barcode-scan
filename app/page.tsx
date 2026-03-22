@@ -1,65 +1,548 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+import { useEffect, useRef, useState } from "react";
+import { BrowserMultiFormatOneDReader, type IScannerControls } from "@zxing/browser";
+import { BarcodeFormat, DecodeHintType, type Result } from "@zxing/library";
+
+type Product = {
+    barcode: string;
+    name: string;
+    price: number;
+    stock: number;
+    sku: string;
+};
+
+type NumericCapability = {
+    min?: number;
+    max?: number;
+};
+
+type BarcodeTrackCapabilities = MediaTrackCapabilities & {
+    torch?: boolean;
+    zoom?: NumericCapability;
+    focusMode?: string[];
+};
+
+type BarcodeTrackConstraintSet = MediaTrackConstraintSet & {
+    torch?: boolean;
+    zoom?: number;
+    focusMode?: string;
+};
+
+function toMediaTrackConstraintSet(
+    constraintSet: BarcodeTrackConstraintSet
+): MediaTrackConstraintSet {
+    return constraintSet as unknown as MediaTrackConstraintSet;
+}
+
+type CameraSetup = {
+    label: string;
+    torchAvailable: boolean;
+};
+
+const PRODUCTS: Record<string, Product> = {
+    "8901234567890": {
+        barcode: "8901234567890",
+        name: "Coca Cola 250ml",
+        price: 35,
+        stock: 24,
+        sku: "DRK-001",
+    },
+    "842251152516": {
+        barcode: "842251152516",
+        name: "Good Luck Book",
+        price: 120,
+        stock: 12,
+        sku: "SOAP-005",
+    },
+    "1234567890128": {
+        barcode: "1234567890128",
+        name: "Lux Soap",
+        price: 55,
+        stock: 12,
+        sku: "SOAP-002",
+    },
+    "9876543210987": {
+        barcode: "9876543210987",
+        name: "Pran Biscuit",
+        price: 20,
+        stock: 48,
+        sku: "BIS-003",
+    },
+};
+
+const BARCODE_FORMATS = [
+    BarcodeFormat.CODABAR,
+    BarcodeFormat.CODE_39,
+    BarcodeFormat.CODE_93,
+    BarcodeFormat.CODE_128,
+    BarcodeFormat.EAN_8,
+    BarcodeFormat.EAN_13,
+    BarcodeFormat.ITF,
+    BarcodeFormat.UPC_A,
+    BarcodeFormat.UPC_E,
+];
+
+const BARCODE_HINTS = new Map<DecodeHintType, unknown>([
+    [DecodeHintType.POSSIBLE_FORMATS, BARCODE_FORMATS],
+    [DecodeHintType.TRY_HARDER, true],
+]);
+
+const READER_OPTIONS = {
+    delayBetweenScanAttempts: 60,
+    delayBetweenScanSuccess: 1200,
+    tryPlayVideoTimeout: 5000,
+};
+
+const REAR_CAMERA_CONSTRAINTS: MediaStreamConstraints = {
+    audio: false,
+    video: {
+        facingMode: { ideal: "environment" },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+        aspectRatio: { ideal: 1.7777777778 },
+    },
+};
+
+const FALLBACK_CAMERA_CONSTRAINTS: MediaStreamConstraints = {
+    audio: false,
+    video: {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+    },
+};
+
+function getCameraErrorMessage(error: unknown) {
+    if (typeof window !== "undefined" && !window.isSecureContext) {
+        return "Camera access on phones requires HTTPS or localhost. If you opened this site by IP over HTTP, the browser will block the camera.";
+    }
+
+    if (error instanceof DOMException) {
+        switch (error.name) {
+            case "NotAllowedError":
+                return "Camera permission was blocked. Allow camera access in the browser and try again.";
+            case "NotFoundError":
+                return "No camera was found on this device.";
+            case "NotReadableError":
+                return "The camera is already in use by another app or browser tab.";
+            case "OverconstrainedError":
+                return "The preferred back camera is not available on this device.";
+            case "SecurityError":
+                return "This page is not allowed to access the camera. Open it over HTTPS or localhost.";
+            default:
+                break;
+        }
+    }
+
+    return error instanceof Error ? error.message : "Failed to start the camera.";
+}
+
+function getActiveVideoTrack(videoElement: HTMLVideoElement | null) {
+    const stream = videoElement?.srcObject;
+    if (!(stream instanceof MediaStream)) {
+        return null;
+    }
+
+    return stream.getVideoTracks()[0] ?? null;
+}
+
+function getTrackCapabilities(track: MediaStreamTrack): BarcodeTrackCapabilities {
+    if (typeof track.getCapabilities !== "function") {
+        return {};
+    }
+
+    return track.getCapabilities() as BarcodeTrackCapabilities;
+}
+
+function getPreferredFocusMode(capabilities: BarcodeTrackCapabilities) {
+    if (!Array.isArray(capabilities.focusMode)) {
+        return null;
+    }
+
+    if (capabilities.focusMode.includes("continuous")) {
+        return "continuous";
+    }
+
+    if (capabilities.focusMode.includes("single-shot")) {
+        return "single-shot";
+    }
+
+    return null;
+}
+
+function getPreferredZoom(capabilities: BarcodeTrackCapabilities) {
+    const zoom = capabilities.zoom;
+    if (!zoom || typeof zoom.max !== "number") {
+        return null;
+    }
+
+    const minZoom = zoom.min ?? 1;
+    const maxZoom = zoom.max;
+
+    if (maxZoom <= minZoom) {
+        return null;
+    }
+
+    return Math.min(maxZoom, Math.max(minZoom, 1.8));
+}
+
+async function configureTrackForBarcodeCapture(
+    videoElement: HTMLVideoElement | null,
+    controls: IScannerControls | null
+): Promise<CameraSetup> {
+    const track = getActiveVideoTrack(videoElement);
+    if (!track) {
+        return {
+            label: "Camera",
+            torchAvailable: Boolean(controls?.switchTorch),
+        };
+    }
+
+    const capabilities = getTrackCapabilities(track);
+    const focusMode = getPreferredFocusMode(capabilities);
+    const zoom = getPreferredZoom(capabilities);
+
+    if (focusMode) {
+        try {
+            await track.applyConstraints({
+                advanced: [toMediaTrackConstraintSet({ focusMode })],
+            });
+        } catch {
+            // ignore unsupported focus tuning
+        }
+    }
+
+    if (zoom !== null) {
+        try {
+            await track.applyConstraints({
+                advanced: [toMediaTrackConstraintSet({ zoom })],
+            });
+        } catch {
+            // ignore unsupported zoom tuning
+        }
+    }
+
+    return {
+        label: track.label || "Camera",
+        torchAvailable: Boolean(capabilities.torch || controls?.switchTorch),
+    };
+}
+
+async function setTrackTorch(videoElement: HTMLVideoElement | null, enabled: boolean) {
+    const track = getActiveVideoTrack(videoElement);
+    if (!track) {
+        return false;
+    }
+
+    try {
+        await track.applyConstraints({
+            advanced: [toMediaTrackConstraintSet({ torch: enabled })],
+        });
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+export default function BarcodeDemoPage() {
+    const videoRef = useRef<HTMLVideoElement | null>(null);
+    const readerRef = useRef<BrowserMultiFormatOneDReader | null>(null);
+    const controlsRef = useRef<IScannerControls | null>(null);
+    const scannedOnceRef = useRef(false);
+
+    const [isStarting, setIsStarting] = useState(false);
+    const [isScanning, setIsScanning] = useState(false);
+    const [scanText, setScanText] = useState("");
+    const [scanFormat, setScanFormat] = useState("");
+    const [product, setProduct] = useState<Product | null>(null);
+    const [error, setError] = useState("");
+    const [cameraLabel, setCameraLabel] = useState("");
+    const [origin, setOrigin] = useState("");
+    const [isSecureOrigin, setIsSecureOrigin] = useState<boolean | null>(null);
+    const [isTorchAvailable, setIsTorchAvailable] = useState(false);
+    const [isTorchOn, setIsTorchOn] = useState(false);
+
+    useEffect(() => {
+        setOrigin(window.location.origin);
+        setIsSecureOrigin(window.isSecureContext);
+
+        return () => {
+            stopScanner();
+        };
+    }, []);
+
+    function handleScanResult(result: Result | undefined, _error: unknown, controls: IScannerControls) {
+        controlsRef.current = controls;
+
+        if (!result || scannedOnceRef.current) {
+            return;
+        }
+
+        scannedOnceRef.current = true;
+
+        const text = result.getText().trim();
+        const format = BarcodeFormat[result.getBarcodeFormat()] || "BARCODE";
+
+        setScanText(text);
+        setScanFormat(format);
+
+        const foundProduct = PRODUCTS[text] || null;
+        setProduct(foundProduct);
+        setError(foundProduct ? "" : `No product found for barcode: ${text}`);
+
+        controls.stop();
+        controlsRef.current = null;
+        setIsScanning(false);
+        setIsTorchOn(false);
+    }
+
+    async function startScanner() {
+        try {
+            setError("");
+            setProduct(null);
+            setScanText("");
+            setScanFormat("");
+            scannedOnceRef.current = false;
+            setIsStarting(true);
+            setIsTorchOn(false);
+            setIsTorchAvailable(false);
+
+            if (!videoRef.current) {
+                setError("Video preview element was not found.");
+                return;
+            }
+
+            if (!window.isSecureContext) {
+                setError("Camera access on phones requires HTTPS or localhost. If you opened this site by IP over HTTP, the browser will block the camera.");
+                return;
+            }
+
+            if (!navigator.mediaDevices?.getUserMedia) {
+                setError("This browser does not support camera access.");
+                return;
+            }
+
+            stopScanner();
+
+            if (!readerRef.current) {
+                readerRef.current = new BrowserMultiFormatOneDReader(BARCODE_HINTS, READER_OPTIONS);
+            }
+
+            setIsScanning(true);
+
+            try {
+                controlsRef.current = await readerRef.current.decodeFromConstraints(
+                    REAR_CAMERA_CONSTRAINTS,
+                    videoRef.current,
+                    handleScanResult
+                );
+            } catch (error) {
+                const shouldRetryWithAnyCamera =
+                    error instanceof DOMException &&
+                    (error.name === "OverconstrainedError" || error.name === "NotFoundError");
+
+                if (!shouldRetryWithAnyCamera) {
+                    throw error;
+                }
+
+                controlsRef.current = await readerRef.current.decodeFromConstraints(
+                    FALLBACK_CAMERA_CONSTRAINTS,
+                    videoRef.current,
+                    handleScanResult
+                );
+            }
+
+            const cameraSetup = await configureTrackForBarcodeCapture(videoRef.current, controlsRef.current);
+            setCameraLabel(cameraSetup.label);
+            setIsTorchAvailable(cameraSetup.torchAvailable);
+        } catch (err) {
+            setError(getCameraErrorMessage(err));
+            setIsScanning(false);
+            setCameraLabel("");
+            setIsTorchAvailable(false);
+            setIsTorchOn(false);
+        } 
+        // finally {
+        //     setIsStarting(false);
+        // }
+    }
+
+    function stopScanner() {
+        try {
+            controlsRef.current?.stop();
+        } catch {
+            // ignore cleanup error
+        }
+
+        const stream = videoRef.current?.srcObject;
+        if (stream instanceof MediaStream) {
+            stream.getTracks().forEach((track) => track.stop());
+        }
+
+        if (videoRef.current) {
+            videoRef.current.pause();
+            videoRef.current.srcObject = null;
+        }
+
+        controlsRef.current = null;
+        setIsScanning(false);
+        setIsTorchAvailable(false);
+        setIsTorchOn(false);
+    }
+
+    function resetAll() {
+        stopScanner();
+        scannedOnceRef.current = false;
+        setScanText("");
+        setScanFormat("");
+        setProduct(null);
+        setError("");
+        setCameraLabel("");
+    }
+
+    async function toggleTorch() {
+        const nextTorchState = !isTorchOn;
+
+        try {
+            if (controlsRef.current?.switchTorch) {
+                await controlsRef.current.switchTorch(nextTorchState);
+            } else {
+                const torchApplied = await setTrackTorch(videoRef.current, nextTorchState);
+                if (!torchApplied) {
+                    throw new Error("Torch control is not available on this device.");
+                }
+            }
+
+            setError("");
+            setIsTorchOn(nextTorchState);
+        } catch (torchError) {
+            setError(
+                torchError instanceof Error
+                    ? torchError.message
+                    : "Torch control is not available on this device."
+            );
+        }
+    }
+
+    return (
+        <main className="min-h-screen bg-white p-6 text-black">
+            <div className="mx-auto max-w-3xl space-y-6">
+                <div>
+                    <h1 className="text-2xl font-bold">Barcode Scanner Demo</h1>
+                </div>
+
+                {isSecureOrigin === false ? (
+                    <div className="space-y-2 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-950">
+                        <p className="font-semibold">Camera is blocked on this connection</p>
+                        <p className="text-sm">
+                            This page is running from <span className="font-mono">{origin}</span>, which is not a secure origin. Desktop Chrome works on <span className="font-mono">localhost</span>, but phones usually open the dev server by IP address and browsers block camera access there unless it is HTTPS.
+                        </p>
+                        <p className="text-sm">
+                            Start the app with <span className="font-mono">npm run dev:phone</span>, then open the printed <span className="font-mono">https://...</span> address on your phone.
+                        </p>
+                        <p className="text-sm">
+                            If the phone still warns about the certificate, trust the mkcert root CA on the phone or use an HTTPS tunnel.
+                        </p>
+                    </div>
+                ) : null}
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                    Hold the barcode inside the center strip, keep some distance, and turn on the
+                    torch in low light. Only one-dimensional barcodes are decoded.
+                </div>
+
+                <div className="relative overflow-hidden rounded-2xl border bg-gray-100">
+                    <video
+                        ref={videoRef}
+                        className="aspect-video w-full bg-black object-cover"
+                        autoPlay
+                        muted
+                        playsInline
+                    />
+
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-5">
+                        <div className="w-full max-w-xl">
+                            <div className="h-24 rounded-2xl border-2 border-white/90 shadow-[0_0_0_9999px_rgba(0,0,0,0.30)]" />
+                            <p className="mt-3 text-center text-xs font-semibold uppercase tracking-[0.35em] text-white/90">
+                                Align Barcode Here
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex flex-wrap gap-3 justify-end">
+
+                    <button
+                        onClick={stopScanner}
+                        disabled={!isScanning}
+                        className="rounded-lg border px-4 py-2 disabled:opacity-50"
+                    >
+                        Stop
+                    </button>
+
+                    {isTorchAvailable ? (
+                        <button
+                            onClick={toggleTorch}
+                            disabled={!isScanning}
+                            className="rounded-lg border px-4 py-2 disabled:opacity-50"
+                        >
+                            {isTorchOn ? "Torch Off" : "Torch On"}
+                        </button>
+                    ) : null}
+
+                    <button
+                        onClick={resetAll}
+                        className="rounded-lg border px-4 py-2"
+                    >
+                        Reset
+                    </button>
+
+                    <button
+                        onClick={startScanner}
+                        disabled={isStarting || isScanning || isSecureOrigin === false}
+                        className="rounded-lg bg-black px-4 py-2 text-white disabled:opacity-50"
+                    >
+                        {isStarting ? "Starting..." : isScanning ? "Scanning..." : "Start Camera"}
+                    </button>
+                </div>
+
+                {cameraLabel ? (
+                    <p className="text-sm text-gray-600">Using camera: {cameraLabel}</p>
+                ) : null}
+
+                <div className="grid gap-4 rounded-2xl border p-4 md:grid-cols-2">
+                    <div>
+                        <div className="text-sm text-gray-500">Scanned barcode</div>
+                        <div className="font-mono text-lg">{scanText || "No scan yet"}</div>
+                    </div>
+
+                    <div>
+                        <div className="text-sm text-gray-500">Detected format</div>
+                        <div className="font-mono text-lg">{scanFormat || "1D barcode only"}</div>
+                    </div>
+
+                    {product ? (
+                        <div className="space-y-2 rounded-xl border border-green-200 bg-green-50 p-4 md:col-span-2">
+                            <h2 className="text-lg font-semibold">Product Found</h2>
+                            <div><strong>Name:</strong> {product.name}</div>
+                            <div><strong>Barcode:</strong> {product.barcode}</div>
+                            <div><strong>SKU:</strong> {product.sku}</div>
+                            <div><strong>Price:</strong> Tk {product.price}</div>
+                            <div><strong>Stock:</strong> {product.stock}</div>
+                        </div>
+                    ) : (
+                        <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4 md:col-span-2">
+                            No product matched yet.
+                        </div>
+                    )}
+
+                    {error ? (
+                        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 md:col-span-2">
+                            {error}
+                        </div>
+                    ) : null}
+                </div>
+            </div>
+        </main>
+    );
 }
