@@ -12,6 +12,14 @@ type Product = {
     sku: string;
 };
 
+type ScannedItem = {
+    barcode: string;
+    format: string;
+    product: Product | null;
+    quantity: number;
+    scannedAt: string;
+};
+
 type NumericCapability = {
     min?: number;
     max?: number;
@@ -93,6 +101,8 @@ const READER_OPTIONS = {
     delayBetweenScanSuccess: 1200,
     tryPlayVideoTimeout: 5000,
 };
+
+const BARCODE_RESET_DELAY_MS = 450;
 
 const REAR_CAMERA_CONSTRAINTS: MediaStreamConstraints = {
     audio: false,
@@ -248,13 +258,15 @@ export default function BarcodeDemoPage() {
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const readerRef = useRef<BrowserMultiFormatOneDReader | null>(null);
     const controlsRef = useRef<IScannerControls | null>(null);
-    const scannedOnceRef = useRef(false);
+    const activeBarcodeRef = useRef<string | null>(null);
+    const clearActiveBarcodeTimeoutRef = useRef<number | null>(null);
 
     const [isStarting, setIsStarting] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
     const [scanText, setScanText] = useState("");
     const [scanFormat, setScanFormat] = useState("");
     const [product, setProduct] = useState<Product | null>(null);
+    const [scannedItems, setScannedItems] = useState<ScannedItem[]>([]);
     const [error, setError] = useState("");
     const [cameraLabel, setCameraLabel] = useState("");
     const [origin, setOrigin] = useState("");
@@ -265,47 +277,105 @@ export default function BarcodeDemoPage() {
     useEffect(() => {
         setOrigin(window.location.origin);
         setIsSecureOrigin(window.isSecureContext);
+        const videoElement = videoRef.current;
 
         return () => {
-            stopScanner();
+            if (clearActiveBarcodeTimeoutRef.current !== null) {
+                window.clearTimeout(clearActiveBarcodeTimeoutRef.current);
+            }
+
+            try {
+                controlsRef.current?.stop();
+            } catch {
+                // ignore cleanup error
+            }
+
+            const stream = videoElement?.srcObject;
+            if (stream instanceof MediaStream) {
+                stream.getTracks().forEach((track) => track.stop());
+            }
+
+            if (videoElement) {
+                videoElement.pause();
+                videoElement.srcObject = null;
+            }
+
+            controlsRef.current = null;
+            activeBarcodeRef.current = null;
         };
     }, []);
+
+    function clearPendingBarcodeReset() {
+        if (clearActiveBarcodeTimeoutRef.current === null) {
+            return;
+        }
+
+        window.clearTimeout(clearActiveBarcodeTimeoutRef.current);
+        clearActiveBarcodeTimeoutRef.current = null;
+    }
+
+    function scheduleBarcodeReset() {
+        clearPendingBarcodeReset();
+        clearActiveBarcodeTimeoutRef.current = window.setTimeout(() => {
+            activeBarcodeRef.current = null;
+            clearActiveBarcodeTimeoutRef.current = null;
+        }, BARCODE_RESET_DELAY_MS);
+    }
 
     function handleScanResult(result: Result | undefined, _error: unknown, controls: IScannerControls) {
         controlsRef.current = controls;
 
-        if (!result || scannedOnceRef.current) {
+        if (!result) {
+            scheduleBarcodeReset();
             return;
         }
 
-        scannedOnceRef.current = true;
-
         const text = result.getText().trim();
+        if (!text) {
+            return;
+        }
+
+        clearPendingBarcodeReset();
+
+        if (activeBarcodeRef.current === text) {
+            return;
+        }
+
+        activeBarcodeRef.current = text;
+        const now = Date.now();
         const format = BarcodeFormat[result.getBarcodeFormat()] || "BARCODE";
+        const scannedAt = new Date(now).toLocaleTimeString();
 
         setScanText(text);
         setScanFormat(format);
 
         const foundProduct = PRODUCTS[text] || null;
         setProduct(foundProduct);
-        setError(foundProduct ? "" : `No product found for barcode: ${text}`);
+        setError("");
+        setScannedItems((current) => {
+            const existing = current.find((item) => item.barcode === text);
 
-        controls.stop();
-        controlsRef.current = null;
-        setIsScanning(false);
-        setIsTorchOn(false);
+            return [
+                {
+                    barcode: text,
+                    format,
+                    product: foundProduct,
+                    quantity: (existing?.quantity ?? 0) + 1,
+                    scannedAt,
+                },
+                ...current.filter((item) => item.barcode !== text),
+            ];
+        });
     }
 
     async function startScanner() {
         try {
             setError("");
-            setProduct(null);
-            setScanText("");
-            setScanFormat("");
-            scannedOnceRef.current = false;
             setIsStarting(true);
             setIsTorchOn(false);
             setIsTorchAvailable(false);
+            clearPendingBarcodeReset();
+            activeBarcodeRef.current = null;
 
             if (!videoRef.current) {
                 setError("Video preview element was not found.");
@@ -361,10 +431,10 @@ export default function BarcodeDemoPage() {
             setCameraLabel("");
             setIsTorchAvailable(false);
             setIsTorchOn(false);
-        } 
-        // finally {
-        //     setIsStarting(false);
-        // }
+        }
+        finally {
+            setIsStarting(false);
+        }
     }
 
     function stopScanner() {
@@ -385,6 +455,8 @@ export default function BarcodeDemoPage() {
         }
 
         controlsRef.current = null;
+        clearPendingBarcodeReset();
+        activeBarcodeRef.current = null;
         setIsScanning(false);
         setIsTorchAvailable(false);
         setIsTorchOn(false);
@@ -392,10 +464,11 @@ export default function BarcodeDemoPage() {
 
     function resetAll() {
         stopScanner();
-        scannedOnceRef.current = false;
+        activeBarcodeRef.current = null;
         setScanText("");
         setScanFormat("");
         setProduct(null);
+        setScannedItems([]);
         setError("");
         setCameraLabel("");
     }
@@ -424,6 +497,9 @@ export default function BarcodeDemoPage() {
         }
     }
 
+    const latestScan = scannedItems[0] ?? null;
+    const totalScannedItems = scannedItems.reduce((total, item) => total + item.quantity, 0);
+
     return (
         <main className="min-h-screen bg-white p-6 text-black">
             <div className="mx-auto max-w-3xl space-y-6">
@@ -448,7 +524,8 @@ export default function BarcodeDemoPage() {
 
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
                     Hold the barcode inside the center strip, keep some distance, and turn on the
-                    torch in low light. Only one-dimensional barcodes are decoded.
+                    torch in low light. Start the camera once, keep scanning products, and stop it
+                    manually when you are done. Only one-dimensional barcodes are decoded.
                 </div>
 
                 <div className="relative overflow-hidden rounded-2xl border bg-gray-100">
@@ -512,7 +589,7 @@ export default function BarcodeDemoPage() {
 
                 <div className="grid gap-4 rounded-2xl border p-4 md:grid-cols-2">
                     <div>
-                        <div className="text-sm text-gray-500">Scanned barcode</div>
+                        <div className="text-sm text-gray-500">Last scanned barcode</div>
                         <div className="font-mono text-lg">{scanText || "No scan yet"}</div>
                     </div>
 
@@ -521,18 +598,37 @@ export default function BarcodeDemoPage() {
                         <div className="font-mono text-lg">{scanFormat || "1D barcode only"}</div>
                     </div>
 
-                    {product ? (
-                        <div className="space-y-2 rounded-xl border border-green-200 bg-green-50 p-4 md:col-span-2">
-                            <h2 className="text-lg font-semibold">Product Found</h2>
-                            <div><strong>Name:</strong> {product.name}</div>
-                            <div><strong>Barcode:</strong> {product.barcode}</div>
-                            <div><strong>SKU:</strong> {product.sku}</div>
-                            <div><strong>Price:</strong> Tk {product.price}</div>
-                            <div><strong>Stock:</strong> {product.stock}</div>
+                    {scanText ? (
+                        <div
+                            className={`space-y-2 rounded-xl border p-4 md:col-span-2 ${product
+                                    ? "border-green-200 bg-green-50"
+                                    : "border-amber-200 bg-amber-50"
+                                }`}
+                        >
+                            <h2 className="text-lg font-semibold">
+                                {product ? "Latest Product" : "Latest Scan"}
+                            </h2>
+                            {product ? (
+                                <>
+                                    <div><strong>Name:</strong> {product.name}</div>
+                                    <div><strong>Barcode:</strong> {product.barcode}</div>
+                                    <div><strong>SKU:</strong> {product.sku}</div>
+                                    <div><strong>Price:</strong> Tk {product.price}</div>
+                                    <div><strong>Stock:</strong> {product.stock}</div>
+                                </>
+                            ) : (
+                                <div>This barcode is not in the product list yet.</div>
+                            )}
+                            {latestScan ? (
+                                <div><strong>Scanned count:</strong> {latestScan.quantity}</div>
+                            ) : null}
+                            {latestScan ? (
+                                <div><strong>Last scanned at:</strong> {latestScan.scannedAt}</div>
+                            ) : null}
                         </div>
                     ) : (
                         <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4 md:col-span-2">
-                            No product matched yet.
+                            No scan yet. Start the camera and keep scanning until you press Stop.
                         </div>
                     )}
 
@@ -541,6 +637,48 @@ export default function BarcodeDemoPage() {
                             {error}
                         </div>
                     ) : null}
+                </div>
+
+                <div className="rounded-2xl border p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h2 className="text-lg font-semibold">Scanned Items</h2>
+                        <p className="text-sm text-gray-600">
+                            {totalScannedItems} total scans - {scannedItems.length} unique barcodes
+                        </p>
+                    </div>
+
+                    {scannedItems.length ? (
+                        <div className="mt-4 space-y-3">
+                            {scannedItems.map((item) => (
+                                <div key={item.barcode} className="rounded-xl border border-slate-200 p-4">
+                                    <div className="flex flex-wrap items-start justify-between gap-3">
+                                        <div>
+                                            <div className="text-base font-semibold">
+                                                {item.product?.name ?? "Unknown product"}
+                                            </div>
+                                            <div className="font-mono text-sm text-slate-600">
+                                                {item.barcode}
+                                            </div>
+                                        </div>
+                                        <div className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
+                                            Qty {item.quantity}
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-700">
+                                        <div><strong>Format:</strong> {item.format}</div>
+                                        {item.product ? <div><strong>SKU:</strong> {item.product.sku}</div> : null}
+                                        {item.product ? <div><strong>Price:</strong> Tk {item.product.price}</div> : null}
+                                        <div><strong>Last scan:</strong> {item.scannedAt}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="mt-4 text-sm text-gray-600">
+                            No items scanned yet.
+                        </p>
+                    )}
                 </div>
             </div>
         </main>
