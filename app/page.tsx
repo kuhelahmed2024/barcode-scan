@@ -38,7 +38,6 @@ type Product = {
     barcode: string;
     name: string;
     price: number;
-    stock: number;
 };
 
 type ScannedItem = {
@@ -54,25 +53,21 @@ const PRODUCTS: Record<string, Product> = {
         barcode: "8901234567890",
         name: "Coca Cola 250ml",
         price: 35,
-        stock: 24,
     },
     "842251152516": {
         barcode: "842251152516",
         name: "Good Luck Book",
         price: 120,
-        stock: 12,
     },
     "1234567890128": {
         barcode: "1234567890128",
         name: "Lux Soap",
         price: 55,
-        stock: 12,
     },
     "9876543210987": {
         barcode: "9876543210987",
         name: "Pran Biscuit",
         price: 20,
-        stock: 48,
     },
 };
 
@@ -632,7 +627,7 @@ export default function BarcodeDemoPage() {
                             <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 px-5 sm:px-8">
                                 <div
                                     className={`relative mx-auto h-28 max-w-2xl rounded-[28px] border-2 transition-all duration-300 ${isSuccessFlashActive
-                                        ? "border-emerald-600 bg-emerald-400/10 shadow-[0_0_0_9999px_rgba(16,185,129,0.10)]"
+                                        ? "border-emerald-600 bg-emerald-400/10 shadow-[0_0_0_9999px_rgba(16,185,129,0.30)]"
                                         : "border-white/90 bg-white/10 shadow-[0_0_0_9999px_rgba(15,23,42,0.18)]"
                                         }`}
                                 >
