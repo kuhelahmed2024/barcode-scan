@@ -270,7 +270,6 @@ export default function BarcodeDemoPage() {
     const [cameraLabel, setCameraLabel] = useState("");
     const [isStarting, setIsStarting] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
-    const [isHelpOpen, setIsHelpOpen] = useState(false);
     const [scanEventCount, setScanEventCount] = useState(0);
     const [isTorchAvailable, setIsTorchAvailable] = useState(false);
     const [scannedItems, setScannedItems] = useState<ScannedItem[]>([]);
@@ -588,27 +587,6 @@ export default function BarcodeDemoPage() {
     return (
         <main className="min-h-screen bg-slate-950 text-slate-100">
             <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-                <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                        <div className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-emerald-300">
-                            Smart Barcode Scanner
-                        </div>
-                        <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-                            Fast product scan experience
-                        </h1>
-                    </div>
-
-                    <button
-                        type="button"
-                        onClick={() => setIsHelpOpen((current) => !current)}
-                        aria-expanded={isHelpOpen}
-                        aria-controls="scanner-help"
-                        className="inline-flex items-center justify-center rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm font-medium text-slate-200 transition hover:border-slate-500 hover:bg-slate-800"
-                    >
-                        {isHelpOpen ? "Hide scanning tips" : "Show scanning tips"}
-                    </button>
-                </div>
-
                 {isSecureOrigin === false ? (
                     <div className="mb-6 rounded-3xl border border-amber-400/30 bg-amber-500/10 p-4 text-amber-100">
                         <p className="text-sm font-semibold">Camera is blocked on this connection</p>
@@ -620,17 +598,6 @@ export default function BarcodeDemoPage() {
                             Run your secure dev command, open the printed HTTPS URL on the phone, and
                             trust the certificate if needed.
                         </p>
-                    </div>
-                ) : null}
-
-                {isHelpOpen ? (
-                    <div
-                        id="scanner-help"
-                        className="mb-6 rounded-3xl border border-slate-800 bg-slate-900/70 p-4 text-sm text-slate-300"
-                    >
-                        Keep the barcode inside the center frame, leave a little distance between camera
-                        and product, and use the torch in low light. Scan one item after another without
-                        stopping the camera. Quantity updates can be adjusted from the cart below.
                     </div>
                 ) : null}
 
@@ -655,18 +622,9 @@ export default function BarcodeDemoPage() {
                                     {statusText}
                                 </span>
 
-                                <span className="inline-flex items-center rounded-full bg-slate-800/90 px-3 py-1 text-xs font-medium text-slate-300 ring-1 ring-slate-700">
-                                    {cameraLabel || "No camera selected"}
-                                </span>
-
-                                <span
-                                    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ring-1 ${isSecureOrigin === false
-                                        ? "bg-red-500/15 text-red-300 ring-red-400/30"
-                                        : "bg-sky-500/15 text-sky-300 ring-sky-400/30"
-                                        }`}
-                                >
-                                    {isSecureOrigin === false ? "Insecure origin" : "Secure origin"}
-                                </span>
+                                <div className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-emerald-300">
+                                    Smart Barcode Scanner
+                                </div>
                             </div>
 
                             <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 px-5 sm:px-8">
@@ -696,30 +654,21 @@ export default function BarcodeDemoPage() {
                     ) : null}
 
                     <div className="border-t border-slate-800 p-4 sm:p-5">
-                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                            <button
-                                type="button"
-                                onClick={startScanner}
-                                disabled={isStarting || isScanning || isSecureOrigin === false}
-                                className={`${baseButton} bg-emerald-500 text-slate-950 hover:bg-emerald-400`}
-                            >
-                                {isStarting ? "Starting..." : isScanning ? "Camera active" : "Start camera"}
-                            </button>
+                        <div className="flex gap-2 justify-around">
 
                             <button
                                 type="button"
-                                onClick={stopScanner}
-                                disabled={!isScanning}
-                                className={`${baseButton} border border-rose-500/30 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20`}
+                                onClick={resetAll}
+                                className={`${baseButton} w-full border border-slate-700 bg-slate-900 text-slate-100 hover:border-slate-500 hover:bg-slate-800`}
                             >
-                                Stop scanner
+                                Reset all
                             </button>
 
                             <button
                                 type="button"
                                 onClick={toggleTorch}
                                 disabled={!isScanning || !isTorchAvailable}
-                                className={`${baseButton} border border-slate-700 bg-slate-800 text-slate-100 hover:border-slate-500 hover:bg-slate-700`}
+                                className={`${baseButton} w-full border border-slate-700 bg-slate-800 text-slate-100 hover:border-slate-500 hover:bg-slate-700`}
                             >
                                 {!isTorchAvailable
                                     ? "Torch unavailable"
@@ -730,10 +679,17 @@ export default function BarcodeDemoPage() {
 
                             <button
                                 type="button"
-                                onClick={resetAll}
-                                className={`${baseButton} border border-slate-700 bg-slate-900 text-slate-100 hover:border-slate-500 hover:bg-slate-800`}
+                                onClick={() => {
+                                    if (!isStarting && isScanning) {
+                                        stopScanner()
+                                    } else {
+                                        startScanner()
+                                    }
+                                }}
+                                disabled={isStarting || isScanning || isSecureOrigin === false}
+                                className={`${baseButton} ${(!isStarting && isScanning) ? "border border-rose-500/30 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20" : "bg-emerald-500 text-slate-950 hover:bg-emerald-400"} w-full`}
                             >
-                                Reset all
+                                {isStarting ? "Starting..." : isScanning ? "Stop scanner" : "Start camera"}
                             </button>
                         </div>
                     </div>
